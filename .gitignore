@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Large generated media and local database
+backend/storage/videos/*
+!backend/storage/videos/.gitkeep
+backend/storage/frames/*
+!backend/storage/frames/.gitkeep
+backend/storage/audio/*
+!backend/storage/audio/.gitkeep
+backend/storage/subtitles/*
+!backend/storage/subtitles/.gitkeep
+backend/storage/assets/*
+!backend/storage/assets/.gitkeep
+backend/storage/*.db
+backend/storage/*.db-journal
+
+# OS and IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
