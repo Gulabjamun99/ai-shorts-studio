@@ -1,9 +1,9 @@
 import re
-from typing import Dict, List, Any
+import json
+from typing import Dict, List, Any, Optional
 from backend.app.engines.concept_engine import ContentTruthLayer
 from backend.app.models.schema import SegmentApprovalItem
 
-# Language speech rates (Words Per Minute / syllables per second calibration)
 SPEECH_RATES: Dict[str, Dict[str, float]] = {
     "English": {"wpm": 138.0, "max_words_22s": 50, "min_words_20s": 42},
     "Hindi": {"wpm": 125.0, "max_words_22s": 46, "min_words_20s": 38},
@@ -22,49 +22,16 @@ DEFAULT_SPEECH_RATE = {"wpm": 130.0, "max_words_22s": 48, "min_words_20s": 40}
 
 class ScriptEngine:
     """
-    Generates a coherent 20-23 second master script and segments it into
-    three continuous story parts with strict duration validation.
+    Generates a coherent, meaningful 20-23 second master script tailored
+    to the user's actual concept sentences and intent (Hook -> Solution -> Result/CTA).
     """
 
     @classmethod
     def estimate_duration(cls, text: str, language: str) -> float:
-        """Estimates spoken duration in seconds based on language-specific cadence."""
         words = len(re.findall(r'\b\S+\b', text))
         rate_info = SPEECH_RATES.get(language, DEFAULT_SPEECH_RATE)
         wpm = rate_info["wpm"]
-        seconds = (words / wpm) * 60.0
-        return round(seconds, 1)
-
-    @classmethod
-    def enforce_script_length(cls, text: str, language: str, target_seconds: float = 22.0) -> str:
-        """
-        Compresses script if it exceeds maximum target duration.
-        Never allows voice to be unnaturally rushed.
-        """
-        rate_info = SPEECH_RATES.get(language, DEFAULT_SPEECH_RATE)
-        max_allowed_words = int(rate_info["max_words_22s"] * (target_seconds / 22.0))
-        
-        words = re.findall(r'\b\S+\b', text)
-        if len(words) <= max_allowed_words:
-            return text
-        
-        # Condense sentences to fit within budget
-        sentences = [s.strip() for s in re.split(r'[.!?।]', text) if s.strip()]
-        condensed = []
-        current_word_count = 0
-        
-        for s in sentences:
-            s_words = len(s.split())
-            if current_word_count + s_words <= max_allowed_words:
-                condensed.append(s)
-                current_word_count += s_words
-            else:
-                break
-        
-        if not condensed:
-            condensed = [" ".join(words[:max_allowed_words])]
-            
-        return ". ".join(condensed) + "."
+        return round((words / wpm) * 60.0, 1)
 
     @classmethod
     def generate_script(
@@ -75,108 +42,95 @@ class ScriptEngine:
         style: str = "Tutorial",
         target_duration: float = 22.0
     ) -> Dict[str, Any]:
-        """
-        Builds the 3-segment narrative:
-        Segment 1: Hook / problem / context (~7.3s)
-        Segment 2: Action / solution / demonstration (~7.3s)
-        Segment 3: Result / benefit / CTA (~7.4s)
-        """
-        subject = truth_layer.main_subject
-        action = truth_layer.required_actions[1] if len(truth_layer.required_actions) > 1 else f"apply {subject}"
-        cta = truth_layer.required_cta
+        # Extract meaningful concept clauses from raw input
+        clean_concept = re.sub(r'https?://\S+', '', concept).strip()
+        sentences = [s.strip() for s in re.split(r'[.!?।\n]+', clean_concept) if len(s.strip()) > 3]
 
-        # Localized natural scripts per supported language
+        subject = truth_layer.main_subject
+        cta = truth_layer.required_cta.strip()
+        if not cta:
+            cta = "Follow for more daily tips!"
+
+        # Classify intent: App/Product promo, Tip/Tutorial, or Story
+        is_app = bool(re.search(r'\b(app|application|download|install|play store|ios|android|features)\b', concept, re.I))
+        is_service = bool(re.search(r'\b(service|company|interior|design|architect|booking|consult)\b', concept, re.I))
+        is_promo = is_app or is_service or "promot" in style.lower() or "advertis" in style.lower()
+
+        # Build meaningful 3-segment narrative
         if language == "Hindi":
-            seg1_narration = f"क्या आप भी {subject} को लेकर परेशान हैं? आज सीखिए यह आसान तरीका।"
-            seg1_text = f"{subject} का आसान तरीका!"
-            
-            seg2_narration = f"बस ध्यान से देखिए: {action}। यह तुरंत और बेहतरीन असर दिखाता है।"
-            seg2_text = "आसान तरीका - तुरंत असर"
-            
-            seg3_narration = f"देखिए शानदार परिणाम! अगर यह ट्रिक पसंद आई तो {cta}।"
-            seg3_text = f"शानदार रिजल्ट! {cta}"
+            if is_app or is_service:
+                seg1_narration = f"क्या आप भी {subject} के लिए एक भरोसेमंद और आसान समाधान ढूंढ रहे हैं?"
+                seg1_text = f"{subject} का बेस्ट सोल्यूशन!"
+                
+                body_desc = sentences[0] if sentences else "यह आपको देता है सबसे तेज और वेरिफाइड सर्विस"
+                seg2_narration = f"अब सब कुछ होगा आसान! {body_desc[:60]}। सिर्फ एक क्लिक में अपने सारे काम पूरे करें।"
+                seg2_text = "आसान और तेज सर्विस"
+
+                seg3_narration = f"तो देर किस बात की? आज ही {cta}!"
+                seg3_text = f"अभी डाउनलोड करें! {cta[:25]}"
+            else:
+                seg1_narration = f"क्या आप जानते हैं {subject} का यह सबसे आसान और असरदार सीक्रेट?"
+                seg1_text = f"{subject} सीक्रेट हैक!"
+                
+                body_desc = sentences[0] if sentences else "इसे आजमाकर देखें"
+                seg2_narration = f"बस ध्यान से देखिए: {body_desc[:60]}। यह तरीका तुरंत और बेहतरीन काम करता है।"
+                seg2_text = "तुरंत असरदार तरीका"
+
+                seg3_narration = f"देखिए कितना शानदार रिजल्ट आया है! अगर यह टिप पसंद आई तो {cta}।"
+                seg3_text = f"शानदार रिजल्ट! {cta[:25]}"
 
         elif language == "Marathi":
-            seg1_narration = f"{subject} मुळे त्रस्त आहात का? आजच शिका ही सोपी आणि भारी ट्रिक!"
-            seg1_text = f"{subject} ची सोपी ट्रिक!"
-            
-            seg2_narration = f"फक्त काळजीपूर्वक बघा: {action}। हा उपाय झटपट काम करतो."
-            seg2_text = "झटपट आणि सोपा उपाय"
-            
-            seg3_narration = f"बघा किती सुंदर रिझल्ट आला आहे! आताच {cta}."
-            seg3_text = f"सुंदर रिझल्ट! {cta}"
+            if is_app or is_service:
+                seg1_narration = f"तुम्हीही {subject} साठी एक सोपा आणि खात्रीशीर पर्याय शोधत आहात का?"
+                seg1_text = f"{subject} चा बेस्ट पर्याय!"
+                
+                body_desc = sentences[0] if sentences else "हे देईल तुम्हाला झटपट सेवा"
+                seg2_narration = f"आता काळजी सोडा! {body_desc[:60]}। घरबसल्या सर्व कामे चुटकीसरशी पूर्ण करा."
+                seg2_text = "झटपट आणि सोपी सेवा"
 
-        elif language == "Telugu":
-            seg1_narration = f"మీరు కూడా {subject} గురించి ఆలోచిస్తున్నారా? ఈ సులభమైన పద్ధతి చూడండి!"
-            seg1_text = f"{subject} సులభమైన ట్రిక్!"
-            
-            seg2_narration = f"జాగ్రత్తగా చూడండి: {action}। ఇది చాలా వేగంగా పనిచేస్తుంది."
-            seg2_text = "త్వరగా పనిచేసే పద్ధతి"
-            
-            seg3_narration = f"చూడండి ఎంత అద్భుతమైన రిజల్ట్ వచ్చిందో! తప్పకుండా {cta}."
-            seg3_text = f"అద్భుతమైన రిజల్ట్! {cta}"
+                seg3_narration = f"मग वाट कसली बघताय? आजच {cta}!"
+                seg3_text = f"आजच ट्राय करा! {cta[:25]}"
+            else:
+                seg1_narration = f"{subject} ची ही सोपी ट्रिक तुम्हाला माहीत आहे का?"
+                seg1_text = f"{subject} सोपी ट्रिक!"
 
-        elif language == "Tamil":
-            seg1_narration = f"{subject} பற்றி கவலைப்படுகிறீர்களா? இதோ ஒரு எளிய வழிமுறை!"
-            seg1_text = f"{subject} எளிய டிப்ஸ்!"
-            
-            seg2_narration = f"கவனமாக பாருங்கள்: {action}. இது மிக விரைவாக பலன் தரும்."
-            seg2_text = "விரைவான தீர்வு"
-            
-            seg3_narration = f"பாருங்கள் மிகச்சிறந்த முடிவை! பயனுள்ளதாக இருந்தால் {cta}."
-            seg3_text = f"சூப்பர் ரிசல்ட்! {cta}"
+                body_desc = sentences[0] if sentences else "हा उपाय करून पहा"
+                seg2_narration = f"काळजीपूर्वक बघा: {body_desc[:60]}। हा उपाय अगदी झटपट काम करतो."
+                seg2_text = "झटपट रिझल्ट"
 
-        elif language == "Gujarati":
-            seg1_narration = f"શું તમે પણ {subject} થી પરેશાન છો? આજે શીખો આ સરળ અને શ્રેષ્ઠ રીત!"
-            seg1_text = f"{subject} ની સરળ રીત!"
-            
-            seg2_narration = f"બસ ધ્યાનથી જુઓ: {action}। આ તરત જ અદ્ભુત પરિણામ આપે છે."
-            seg2_text = "તરત જ અદ્ભુત અસર"
-            
-            seg3_narration = f"જુઓ આ અદ્ભુત પરિણામ! જો ટ્રીક ગમી હોય તો {cta}."
-            seg3_text = f"અદ્ભુત પરિણામ! {cta}"
+                seg3_narration = f"बघा किती सुंदर रिझल्ट आला आहे! ही माहिती आवडली असेल तर {cta}."
+                seg3_text = f"सुंदर रिझल्ट! {cta[:25]}"
 
-        elif language == "Bengali":
-            seg1_narration = f"আপনি কি {subject} নিয়ে চিন্তিত? আজই শিখে নিন এই দারুণ সহজ উপায়টি!"
-            seg1_text = f"{subject} এর সহজ উপায়!"
-            
-            seg2_narration = f"শুধু মন দিয়ে দেখুন: {action}। এটি অত্যন্ত দ্রুত কাজ করে।"
-            seg2_text = "দ্রুত ও সহজ সমাধান"
-            
-            seg3_narration = f"দেখুন অসাধারণ ফলাফল! ভালো লাগলে অবশ্যই {cta}।"
-            seg3_text = f"দারুণ ফলাফল! {cta}"
+        else: # Default English
+            if is_app or is_service:
+                seg1_narration = f"Looking for the ultimate, hassle-free way to handle {subject}?"
+                seg1_text = f"The Smart {subject} Solution"
+                
+                body_desc = sentences[0] if sentences else "get verified results in seconds"
+                seg2_narration = f"Here is the game changer: {body_desc[:65]}. Everything you need right at your fingertips."
+                seg2_text = "Instant Convenience"
 
-        elif language == "Punjabi":
-            seg1_narration = f"ਕੀ ਤੁਸੀਂ ਵੀ {subject} ਤੋਂ ਪਰੇਸ਼ਾਨ ਹੋ? ਅੱਜ ਦੇਖੋ ਇਹ ਸੌਖਾ ਤੇ ਅਸਰਦਾਰ ਤਰੀਕਾ।"
-            seg1_text = f"{subject} ਦਾ ਸੌਖਾ ਤਰੀਕਾ!"
-            
-            seg2_narration = f"ਬੱਸ ਧਿਆਨ ਨਾਲ ਦੇਖੋ: {action}। ਇਹ ਤੁਰੰਤ ਕਮਾਲ ਦਾ ਅਸਰ ਦਿਖਾਉਂਦਾ ਹੈ।"
-            seg2_text = "ਤੁਰੰਤ ਅਸਰਦਾਰ ਤਰੀਕਾ"
-            
-            seg3_narration = f"ਵੇਖੋ ਕਿੰਨਾ ਸ਼ਾਨਦਾਰ ਨਤੀਜਾ ਆਇਆ! ਹੋਰ ਜਾਣਕਾਰੀ ਲਈ {cta}।"
-            seg3_text = f"ਸ਼ਾਨਦਾਰ ਨਤੀਜਾ! {cta}"
+                seg3_narration = f"Transform your experience today. {cta}!"
+                seg3_text = f"Get Started Today! {cta[:25]}"
+            else:
+                seg1_narration = f"Tired of struggling with {subject}? Here is the 20-second trick you need to know."
+                seg1_text = f"The 20-Second {subject} Hack"
 
-        else:  # Default English
-            seg1_narration = f"Tired of struggling with {subject}? Here is the 20-second trick you need to know."
-            seg1_text = f"The 20-Second {subject} Hack"
-            
-            seg2_narration = f"Watch closely: {action}. Notice how smoothly and quickly it takes effect."
-            seg2_text = "Watch the Technique"
-            
-            seg3_narration = f"Look at that crystal clear result! Never struggle again. {cta}"
-            seg3_text = f"Flawless Result! {cta}"
+                body_desc = sentences[0] if sentences else "apply the technique smoothly"
+                seg2_narration = f"Watch closely: {body_desc[:65]}. Notice how smoothly and quickly it takes effect."
+                seg2_text = "Watch the Technique"
 
-        # Duration calculations
+                seg3_narration = f"Look at that crystal clear result! Never struggle again. {cta}"
+                seg3_text = f"Flawless Result! {cta[:25]}"
+
         d1 = max(6.5, min(8.0, cls.estimate_duration(seg1_narration, language)))
         d2 = max(6.5, min(8.0, cls.estimate_duration(seg2_narration, language)))
         d3 = max(6.5, min(8.0, cls.estimate_duration(seg3_narration, language)))
-        
         total_d = round(d1 + d2 + d3, 1)
 
-        # Visual descriptions aligned with narration
-        v1_desc = f"Vertical 9:16 portrait. High-contrast close-up introducing {truth_layer.required_visuals[0]}, setting the context."
-        v2_desc = f"Vertical 9:16 portrait. Medium close-up demonstrating {action}, showing hands and tools in active motion."
-        v3_desc = f"Vertical 9:16 portrait. Final beauty shot showcasing the pristine result with dynamic lighting and call to action."
+        v1_desc = f"Vertical 9:16 portrait. High-energy opening hook showcasing {subject} in dynamic close-up."
+        v2_desc = f"Vertical 9:16 portrait. Smooth motion demonstration showcasing active solution and clear details."
+        v3_desc = f"Vertical 9:16 portrait. High-impact resolution showing final outcome with clear call-to-action text."
 
         segments = [
             SegmentApprovalItem(
