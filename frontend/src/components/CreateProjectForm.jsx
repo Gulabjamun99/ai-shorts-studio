@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Sparkles, Upload, Image as ImageIcon, ChevronDown, ChevronUp, Key, Sliders, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Sparkles, Upload, Image as ImageIcon, ChevronDown, ChevronUp,
+  Key, Sliders, AlertCircle, CheckCircle2, Smartphone, Globe, Bell, Edit3, Trash2
+} from 'lucide-react';
 
 const LANGUAGES = [
   'English', 'Hindi', 'Marathi', 'Telugu', 'Tamil',
@@ -11,26 +14,98 @@ const STYLES = [
   'Cinematic', 'Social media promotional', 'UGC-style', 'Professional corporate', 'Animated'
 ];
 
-const TONES = [
-  'Friendly', 'Professional', 'Energetic', 'Emotional', 'Conversational', 'Promotional'
-];
-
 export default function CreateProjectForm({ onSubmit, loading }) {
   const [title, setTitle] = useState('');
   const [concept, setConcept] = useState('');
   const [platform, setPlatform] = useState('Both');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('Hindi');
   const [style, setStyle] = useState('Tutorial');
   const [voiceGender, setVoiceGender] = useState('Female');
   const [voiceTone, setVoiceTone] = useState('Friendly');
-  const [cta, setCta] = useState('Follow for more daily tips!');
   const [provider, setProvider] = useState('mock');
+  
+  // Persistent Gemini API Key
   const [apiKey, setApiKey] = useState('');
+  const [keySaved, setKeySaved] = useState(false);
+
+  // CTA Builder State
+  const [ctaType, setCtaType] = useState('app'); // 'app' | 'website' | 'subscribe' | 'custom'
+  const [appName, setAppName] = useState('GharMantra');
+  const [appStore, setAppStore] = useState('Google Play Store');
+  const [appLink, setAppLink] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('www.gharmantra.com');
+  const [customCta, setCustomCta] = useState('');
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Asset uploads
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [assetType, setAssetType] = useState('LOGO');
+
+  // Load saved API Key from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedKey = localStorage.getItem('ai_shorts_studio_gemini_key');
+      if (savedKey) {
+        setApiKey(savedKey);
+        setKeySaved(true);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleApiKeyChange = (val) => {
+    setApiKey(val);
+    try {
+      if (val.trim()) {
+        localStorage.setItem('ai_shorts_studio_gemini_key', val.trim());
+        setKeySaved(true);
+      } else {
+        localStorage.removeItem('ai_shorts_studio_gemini_key');
+        setKeySaved(false);
+      }
+    } catch (e) {}
+  };
+
+  const handleClearApiKey = () => {
+    setApiKey('');
+    setKeySaved(false);
+    try {
+      localStorage.removeItem('ai_shorts_studio_gemini_key');
+    } catch (e) {}
+  };
+
+  // Compute final formatted CTA
+  const getComputedCta = () => {
+    if (ctaType === 'app') {
+      const linkPart = appLink.trim() ? ` (Link: ${appLink.trim()})` : '';
+      if (language === 'Hindi') {
+        return `और अधिक जानकारी के लिए, ${appStore} से ${appName} ऐप डाउनलोड करें${linkPart}!`;
+      } else if (language === 'Marathi') {
+        return `अधिक माहितीसाठी, ${appStore} वरून ${appName} ॲप आजच डाउनलोड करा${linkPart}!`;
+      } else {
+        return `For more details, download the ${appName} app from ${appStore}${linkPart}!`;
+      }
+    } else if (ctaType === 'website') {
+      const site = websiteUrl.trim() || 'our website';
+      if (language === 'Hindi') {
+        return `पूरी जानकारी और डिटेल्स के लिए हमारी वेबसाइट ${site} पर विजिट करें!`;
+      } else if (language === 'Marathi') {
+        return `अधिक तपशिलांसाठी आमच्या वेबसाइट ${site} ला भेट द्या!`;
+      } else {
+        return `For complete details and guides, visit our website at ${site}!`;
+      }
+    } else if (ctaType === 'subscribe') {
+      if (language === 'Hindi') {
+        return `ऐसे ही काम के और उपयोगी टिप्स के लिए अभी फॉलो और सब्सक्राइब करें!`;
+      } else if (language === 'Marathi') {
+        return `अशाच उपयुक्त टिप्ससाठी आताच फॉलो आणि सबस्क्राईब करा!`;
+      } else {
+        return `Follow and subscribe for more daily smart tips!`;
+      }
+    } else {
+      return customCta.trim() || 'Follow for more daily tips!';
+    }
+  };
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -51,6 +126,9 @@ export default function CreateProjectForm({ onSubmit, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!concept.trim()) return;
+
+    const finalCta = getComputedCta();
+
     onSubmit({
       title: title.trim() || concept.slice(0, 40) + '...',
       concept: concept.trim(),
@@ -59,7 +137,7 @@ export default function CreateProjectForm({ onSubmit, loading }) {
       style,
       voice_gender: voiceGender,
       voice_tone: voiceTone,
-      cta: cta.trim(),
+      cta: finalCta,
       provider,
       apiKey: apiKey.trim(),
       assets: uploadedFiles
@@ -68,14 +146,31 @@ export default function CreateProjectForm({ onSubmit, loading }) {
 
   return (
     <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-blue-500" />
-          Create a 20-Second Short / Reel
-        </h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Enter your topic or product concept. The engine builds a 3-segment narrative and submits it for your script approval.
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-5">
+        <div>
+          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-blue-500" />
+            Create AI Short / Reel (20–23s)
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Topic ya concept enter karein. Engine 100% aapke concept se matched 3-segment narrative generate karega.
+          </p>
+        </div>
+
+        {/* Saved API Key Quick Status Badge */}
+        <div className="flex items-center gap-2 bg-gray-900/90 border border-gray-700/60 rounded-xl px-3 py-2 text-xs">
+          <Key className="w-4 h-4 text-amber-400 shrink-0" />
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold text-gray-400">Gemini AI Key:</span>
+            {keySaved ? (
+              <span className="text-emerald-400 font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 inline" /> Key Saved in Browser
+              </span>
+            ) : (
+              <span className="text-gray-400 text-[11px]">Free Local NLP Mode</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -88,24 +183,163 @@ export default function CreateProjectForm({ onSubmit, loading }) {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. 5-Second Microwave Steam Cleaning Trick"
+            placeholder="e.g. 5-Second Kitchen Cleaning Trick ya GharMantra App Feature"
             className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
           />
         </div>
 
         {/* Concept */}
         <div>
-          <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
-            What video do you want to create? <span className="text-red-400">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              What video do you want to create? (Topic, Steps, Recipe) <span className="text-red-400">*</span>
+            </label>
+            <span className="text-[11px] text-gray-400">100% Concept-Matched Script</span>
+          </div>
           <textarea
-            rows={4}
+            rows={5}
             required
             value={concept}
             onChange={(e) => setConcept(e.target.value)}
-            placeholder="Describe your tutorial, tip, product ad, or story. Example: Slice a fresh lemon into a bowl of water, microwave for 3 minutes, and wipe away all grease effortlessly with a clean cloth."
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+            placeholder="Aap jo bhi concept ya tutorial banana chahte hain yahan likhein. Agar steps (1, 2, 3...) ya ingredients hain toh unhe bhi likhein — script me wahi exact steps shamil honge!"
+            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition leading-relaxed"
           />
+        </div>
+
+        {/* Call to Action (CTA) Studio */}
+        <div className="bg-gray-900/80 border border-blue-500/30 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-blue-400" />
+              Call to Action (CTA) Setup
+            </span>
+            <span className="text-[11px] text-gray-400">Video ke aakhiri scene me yahi dikhega aur bola jayega</span>
+          </div>
+
+          {/* CTA Type Tabs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setCtaType('app')}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition ${
+                ctaType === 'app'
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-600/30'
+                  : 'bg-gray-800/80 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              App Download
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCtaType('website')}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition ${
+                ctaType === 'website'
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-600/30'
+                  : 'bg-gray-800/80 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Visit Website
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCtaType('subscribe')}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition ${
+                ctaType === 'subscribe'
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-600/30'
+                  : 'bg-gray-800/80 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Follow / Subscribe
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCtaType('custom')}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition ${
+                ctaType === 'custom'
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-md shadow-blue-600/30'
+                  : 'bg-gray-800/80 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              Custom Text
+            </button>
+          </div>
+
+          {/* Conditional CTA Inputs */}
+          {ctaType === 'app' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] text-gray-300 font-medium mb-1">App Name</label>
+                <input
+                  type="text"
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                  placeholder="GharMantra"
+                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-gray-300 font-medium mb-1">Store Name</label>
+                <select
+                  value={appStore}
+                  onChange={(e) => setAppStore(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                >
+                  <option value="Google Play Store">Google Play Store</option>
+                  <option value="Apple App Store">Apple App Store</option>
+                  <option value="Play Store & App Store">Both Stores</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] text-gray-300 font-medium mb-1">App Store Link (Optional)</label>
+                <input
+                  type="text"
+                  value={appLink}
+                  onChange={(e) => setAppLink(e.target.value)}
+                  placeholder="https://play.google.com/store/apps/..."
+                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {ctaType === 'website' && (
+            <div>
+              <label className="block text-[11px] text-gray-300 font-medium mb-1">Website URL or Domain</label>
+              <input
+                type="text"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="e.g. www.gharmantra.com ya link in bio"
+                className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+              />
+            </div>
+          )}
+
+          {ctaType === 'custom' && (
+            <div>
+              <label className="block text-[11px] text-gray-300 font-medium mb-1">Custom CTA Message</label>
+              <input
+                type="text"
+                value={customCta}
+                onChange={(e) => setCustomCta(e.target.value)}
+                placeholder="Aap jo bhi Call to Action bolna chahte hain yahan type karein"
+                className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+              />
+            </div>
+          )}
+
+          {/* Live Preview Box */}
+          <div className="mt-3 bg-gray-950/80 border border-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
+            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider shrink-0">Live CTA Preview:</span>
+            <span className="text-xs text-gray-200 italic truncate">"{getComputedCta()}"</span>
+          </div>
         </div>
 
         {/* Core Selectors: Language, Style, Platform, Voice */}
@@ -163,12 +397,48 @@ export default function CreateProjectForm({ onSubmit, loading }) {
           </div>
         </div>
 
+        {/* Gemini API Key Management (Persistent) */}
+        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-300 flex items-center gap-2">
+              <Key className="w-4 h-4 text-amber-400" />
+              Google Gemini API Key (Saved Automatically in Browser)
+            </span>
+            {keySaved && (
+              <button
+                type="button"
+                onClick={handleClearApiKey}
+                className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                title="Remove API Key from this browser"
+              >
+                <Trash2 className="w-3 h-3" /> Clear Saved Key
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
+              placeholder="AIzaSy... (Aapki key browser me safe save rahegi, baar baar nahi daalna padega)"
+              className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1.5">
+            {keySaved ? (
+              <span className="text-emerald-400">✓ Key browser me save ho chuki hai. Har baar naye video me auto-use hogi!</span>
+            ) : (
+              <span>Agar key nahi hai toh bhi koi baat nahi, Smart Free NLP Engine se video generate ho jayega!</span>
+            )}
+          </p>
+        </div>
+
         {/* Optional Asset Uploads */}
         <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-gray-300 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-indigo-400" />
-              Upload Assets (Optional: Brand Logo, Product Photo, Character Ref)
+              Upload Assets (Optional: Logo, Product Photo, Brand Badge)
             </span>
             <div className="flex gap-2 text-xs">
               {['LOGO', 'PRODUCT', 'CHARACTER_REF'].map(t => (
@@ -220,67 +490,6 @@ export default function CreateProjectForm({ onSubmit, loading }) {
           )}
         </div>
 
-        {/* Advanced Options Accordion */}
-        <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900/40">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold text-gray-400 hover:text-gray-200 transition"
-          >
-            <span className="flex items-center gap-2">
-              <Sliders className="w-4 h-4" />
-              Advanced Options (CTA, Video Engine Provider, Gemini API Key)
-            </span>
-            {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {showAdvanced && (
-            <div className="p-4 border-t border-gray-800 space-y-4 text-xs">
-              <div>
-                <label className="block text-gray-300 mb-1 font-medium">Custom Call to Action (CTA)</label>
-                <input
-                  type="text"
-                  value={cta}
-                  onChange={(e) => setCta(e.target.value)}
-                  placeholder="e.g. Subscribe for more daily home tips!"
-                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-300 mb-1 font-medium">Video Engine Provider</label>
-                  <select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value)}
-                    className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  >
-                    <option value="mock">Local Deterministic Provider (Free / Dev / Testing)</option>
-                    <option value="veo">Google Veo 3.1 (Official Gemini API Key)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-gray-300 mb-1 font-medium flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-yellow-400" />
-                    Gemini API Key (Optional for live Veo)
-                  </label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                  <p className="text-[10px] text-gray-500 mt-1">
-                    Keys are processed server-side only. Zero password or session cookie scraping.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Submit Button */}
         <button
           type="submit"
@@ -303,3 +512,4 @@ export default function CreateProjectForm({ onSubmit, loading }) {
     </div>
   );
 }
+

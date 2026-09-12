@@ -131,62 +131,86 @@ class ScriptEngine:
         is_service = bool(re.search(r'\b(service|company|interior|design|architect|booking|consult)\b', concept, re.I))
 
         # Build meaningful 3-segment narrative
+        # Build meaningful 3-segment narrative strictly matching user's actual concept
         if language == "Hindi":
             if has_steps:
-                # HeyGen-Grade Structured Recipe/Tutorial Flow
-                items_str = " ".join(parsed["items"]).replace("सामग्री", "").replace("Required Items", "").strip()
-                condensed_items = "सफेद सिरका, पानी, स्प्रे बोतल और पुराना अखबार" if ("सिरका" in items_str or "अखबार" in items_str) else (items_str[:50] or "जरूरी सामग्री")
+                items_clean = [it.replace("सामग्री", "").replace("Required Items", "").strip() for it in parsed["items"] if it.strip()]
+                items_str = ", ".join(items_clean) if items_clean else ""
 
-                seg1_narration = f"क्या आप भी खिड़कियों और शीशों के जिद्दी दाग-धब्बों से परेशान हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! बस आपको चाहिए {condensed_items}।"
-                seg1_text = "शीशे चमकाएं बिना दाग! ✨"
+                if items_str:
+                    seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: {items_str}।"
+                else:
+                    seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!"
+                seg1_text = f"{subject[:30]}! ✨"
 
-                # Combine chronological steps
-                st1 = parsed["steps"][0] if len(parsed["steps"]) > 0 else "स्प्रे बोतल में बराबर मात्रा में सिरका और पानी मिलाएं"
-                st2 = parsed["steps"][1] if len(parsed["steps"]) > 1 else "घोल को शीशे पर स्प्रे करें"
-                st3 = parsed["steps"][2] if len(parsed["steps"]) > 2 else "पुराने अखबार से गोल घुमाते हुए पोंछें"
-                seg2_narration = f"स्प्रे बोतल में 1:1 अनुपात में सिरका और पानी मिलाकर हिलाएं। शीशे पर हल्का स्प्रे करें, और पुराने अखबार की गेंद बनाकर गोल-गोल घुमाते हुए पोंछ लें।"
-                seg2_text = "1:1 सिरका + पानी स्प्रे करें 🧽"
+                # Combine actual user steps in exact chronological order
+                step_parts = []
+                for idx, st in enumerate(parsed["steps"][:3], start=1):
+                    cleaned_st = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I).strip()
+                    step_parts.append(f"स्टेप {idx}: {cleaned_st}")
+                seg2_narration = "। ".join(step_parts) + "।"
+                first_step_short = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', parsed["steps"][0], flags=re.I).strip()[:24]
+                seg2_text = f"स्टेप 1: {first_step_short} 🧽"
 
-                tip_str = parsed["tips"][0] if parsed["tips"] else "अखबार से पोंछने पर कोई रोआं या दाग नहीं रहता और शीशा बिल्कुल चमक उठता है"
-                app_cta = "घरमंत्रा ऐप अभी डाउनलोड करें!" if ("gharmantra" in concept.lower() or "घरमंत्रा" in concept) else f"{cta}!"
-                seg3_narration = f"{tip_str}। ऐसे ही और काम के होम टिप्स के लिए, {app_cta}"
-                seg3_text = "घरमंत्रा ऐप डाउनलोड करें 📲"
+                tip_str = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका आपके काम को बेहद आसान और चमकदार बना देता है"
+                seg3_narration = f"स्मार्ट टिप: {tip_str}। और अधिक जानकारी के लिए, {cta}!"
+                seg3_text = f"{cta[:30]} 📲"
 
             elif is_app or is_service:
                 seg1_narration = f"क्या आप भी {subject} के लिए एक भरोसेमंद और आसान समाधान ढूंढ रहे हैं?"
-                seg1_text = f"{subject} का बेस्ट सोल्यूशन!"
+                seg1_text = f"{subject[:25]} का बेस्ट सोल्यूशन!"
                 
                 body_desc = sentences[0] if sentences else "यह आपको देता है सबसे तेज और वेरिफाइड सर्विस"
-                seg2_narration = f"अब सब कुछ होगा आसान! {body_desc[:60]}। सिर्फ एक क्लिक में अपने सारे काम पूरे करें।"
+                seg2_narration = f"अब सब कुछ होगा आसान! {body_desc[:65]}। सिर्फ एक क्लिक में अपने सारे काम पूरे करें।"
                 seg2_text = "आसान और तेज सर्विस"
 
-                seg3_narration = f"तो देर किस बात की? आज ही {cta}!"
-                seg3_text = f"अभी डाउनलोड करें! {cta[:25]}"
+                seg3_narration = f"तो देर किस बात की? {cta}!"
+                seg3_text = f"{cta[:30]} 📲"
             else:
                 seg1_narration = f"क्या आप जानते हैं {subject} का यह सबसे आसान और असरदार सीक्रेट?"
-                seg1_text = f"{subject} सीक्रेट हैक!"
+                seg1_text = f"{subject[:25]} सीक्रेट हैक!"
                 
                 body_desc = sentences[0] if sentences else "इसे आजमाकर देखें"
-                seg2_narration = f"बस ध्यान से देखिए: {body_desc[:60]}। यह तरीका तुरंत और बेहतरीन काम करता है।"
+                seg2_narration = f"बस ध्यान से देखिए: {body_desc[:65]}। यह तरीका तुरंत और बेहतरीन काम करता है।"
                 seg2_text = "तुरंत असरदार तरीका"
 
-                seg3_narration = f"देखिए कितना शानदार रिजल्ट आया है! अगर यह टिप पसंद आई तो {cta}।"
+                seg3_narration = f"देखिए कितना शानदार रिजल्ट आया है! अगर यह पसंद आया तो {cta}।"
                 seg3_text = f"शानदार रिजल्ट! {cta[:25]}"
 
         elif language == "Marathi":
-            if is_app or is_service:
+            if has_steps:
+                items_clean = [it.replace("सामग्री", "").strip() for it in parsed["items"] if it.strip()]
+                items_str = ", ".join(items_clean) if items_clean else ""
+
+                if items_str:
+                    seg1_narration = f"{subject} चा सर्वात सोपा आणि परिणामकारक उपाय! यासाठी तुम्हाला लागेल: {items_str}."
+                else:
+                    seg1_narration = f"{subject} चा सर्वात सोपा आणि परिणामकारक उपाय नक्की वापरून पहा!"
+                seg1_text = f"{subject[:30]}! ✨"
+
+                step_parts = []
+                for idx, st in enumerate(parsed["steps"][:3], start=1):
+                    cleaned_st = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I).strip()
+                    step_parts.append(f"पायरी {idx}: {cleaned_st}")
+                seg2_narration = "। ".join(step_parts) + "।"
+                seg2_text = "सोप्या स्टेप्स फॉलो करा 🧽"
+
+                tip_str = parsed["tips"][0] if parsed["tips"] else "हा उपाय तुमचे काम अतिशय सोपे आणि जलद करेल"
+                seg3_narration = f"स्मार्ट टिप: {tip_str}. अधिक माहितीसाठी, {cta}!"
+                seg3_text = f"{cta[:30]} 📲"
+            elif is_app or is_service:
                 seg1_narration = f"तुम्हीही {subject} साठी एक सोपा आणि खात्रीशीर पर्याय शोधत आहात का?"
-                seg1_text = f"{subject} चा बेस्ट पर्याय!"
+                seg1_text = f"{subject[:25]} चा बेस्ट पर्याय!"
                 
                 body_desc = sentences[0] if sentences else "हे देईल तुम्हाला झटपट सेवा"
                 seg2_narration = f"आता काळजी सोडा! {body_desc[:60]}। घरबसल्या सर्व कामे चुटकीसरशी पूर्ण करा."
                 seg2_text = "झटपट आणि सोपी सेवा"
 
-                seg3_narration = f"मग वाट कसली बघताय? आजच {cta}!"
-                seg3_text = f"आजच ट्राय करा! {cta[:25]}"
+                seg3_narration = f"मग वाट कसली बघताय? {cta}!"
+                seg3_text = f"{cta[:30]}"
             else:
                 seg1_narration = f"{subject} ची ही सोपी ट्रिक तुम्हाला माहीत आहे का?"
-                seg1_text = f"{subject} सोपी ट्रिक!"
+                seg1_text = f"{subject[:25]} सोपी ट्रिक!"
 
                 body_desc = sentences[0] if sentences else "हा उपाय करून पहा"
                 seg2_narration = f"काळजीपूर्वक बघा: {body_desc[:60]}। हा उपाय अगदी झटपट काम करतो."
@@ -197,19 +221,25 @@ class ScriptEngine:
 
         else: # Default English
             if has_steps:
-                items_str = " ".join(parsed["items"]).replace("Items", "").strip()
-                condensed_items = "white vinegar, water, a spray bottle, and old newspaper" if ("vinegar" in concept.lower() or "सिरका" in concept) else (items_str[:50] or "key items")
+                items_clean = [it.replace("Items", "").replace("Required Items", "").strip() for it in parsed["items"] if it.strip()]
+                items_str = ", ".join(items_clean) if items_clean else ""
 
-                seg1_narration = f"Tired of struggling with streak marks on your glass windows? Here is the ultimate zero-streak hack! All you need is {condensed_items}."
-                seg1_text = "Sparkling Clean Glass ✨"
+                if items_str:
+                    seg1_narration = f"Looking for the easiest and most effective way to do {subject}? All you need is: {items_str}."
+                else:
+                    seg1_narration = f"Looking for the easiest and most effective way to do {subject}? This genius trick will save your day!"
+                seg1_text = f"{subject[:30]} ✨"
 
-                seg2_narration = "Mix equal parts vinegar and water in your spray bottle and shake well. Lightly mist the surface, crumple an old newspaper, and wipe in circular motions."
-                seg2_text = "Spray 1:1 Vinegar & Wipe 🧽"
+                step_parts = []
+                for idx, st in enumerate(parsed["steps"][:3], start=1):
+                    cleaned_st = re.sub(r'^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*', '', st, flags=re.I).strip()
+                    step_parts.append(f"Step {idx}: {cleaned_st}")
+                seg2_narration = ". ".join(step_parts) + "."
+                seg2_text = f"Follow the Steps 🧽"
 
-                tip_str = parsed["tips"][0] if parsed["tips"] else "Unlike cloth, newspaper leaves zero lint or smudges for a crystal-clear shine"
-                app_cta = "download the GharMantra app today!" if ("gharmantra" in concept.lower() or "घरमंत्रा" in concept) else f"{cta}!"
-                seg3_narration = f"{tip_str}! For more smart home hacks, {app_cta}"
-                seg3_text = "Download GharMantra App 📲"
+                tip_str = parsed["tips"][0] if parsed["tips"] else "This method saves time and delivers flawless results every single time"
+                seg3_narration = f"Pro Tip: {tip_str}. For more details, {cta}!"
+                seg3_text = f"{cta[:30]} 📲"
 
             elif is_app or is_service:
                 seg1_narration = f"Looking for the ultimate, hassle-free way to handle {subject}?"

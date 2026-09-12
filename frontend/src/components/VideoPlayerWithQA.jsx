@@ -13,7 +13,8 @@ export default function VideoPlayerWithQA({
   qaData,
   metadata = {},
   onRegenerateSegment,
-  onPublish
+  onPublish,
+  onReset
 }) {
   const [selectedSegmentToReroll, setSelectedSegmentToReroll] = useState(2);
   const [rerolling, setRerolling] = useState(false);
@@ -153,11 +154,22 @@ export default function VideoPlayerWithQA({
           </div>
         </div>
 
-        {/* QA Overall Score Badge */}
-        <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-3 px-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-extrabold text-lg">
-            {overallScore}%
-          </div>
+        {/* Actions & QA Overall Score Badge */}
+        <div className="flex flex-wrap items-center gap-3">
+          {onReset && (
+            <button
+              onClick={onReset}
+              className="px-3.5 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+            >
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              + Create Another Short
+            </button>
+          )}
+
+          <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-3 px-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-extrabold text-lg">
+              {overallScore}%
+            </div>
           <div>
             <div className="flex items-center gap-1.5 text-xs font-bold text-white">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -166,6 +178,7 @@ export default function VideoPlayerWithQA({
             <p className="text-[11px] text-gray-400">12 Quality Checks Verified</p>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Main Grid: 9:16 Video Player on Left, QA Scorecard & Controls on Right */}

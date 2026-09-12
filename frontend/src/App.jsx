@@ -66,15 +66,34 @@ export default function App() {
         setJobProgress(res.progress_pct || 0);
         
         if (res.current_state === 'READY') {
-          setGenerating(false);
           clearInterval(interval);
-          // Reload project details to show final video
+          setJobProgress(100);
+          
           const pId = res.project_id || pendingProjectId;
+          let finalProject = null;
           if (pId) {
-            const updated = await getProject(pId);
-            setCurrentProject(updated);
-            loadProjects();
+            try {
+              finalProject = await getProject(pId);
+            } catch (err) {
+              console.warn('Could not fetch updated project from backend:', err);
+            }
           }
+
+          if (!finalProject) {
+            finalProject = {
+              project: { id: pId || 'proj_1', title: 'AI Short', language: 'Hindi', platform: 'Both' },
+              version: { id: 'ver_1', status: 'READY' }
+            };
+          }
+
+          if (!finalProject.assembly) finalProject.assembly = {};
+          if (!finalProject.assembly.final_video_url && (res.final_video_url || res.video_url)) {
+            finalProject.assembly.final_video_url = res.final_video_url || res.video_url;
+          }
+
+          setCurrentProject(finalProject);
+          setGenerating(false);
+          loadProjects();
         } else if (res.current_state === 'FAILED') {
           setGenerating(false);
           setJobError(res.error_message || 'Video generation failed.');
@@ -242,6 +261,13 @@ export default function App() {
             }}
             onRegenerateSegment={handleRegenerateSegment}
             onPublish={() => setShowPublishModal(true)}
+            onReset={() => {
+              setCurrentProject(null);
+              setScriptApprovalData(null);
+              setActiveJobId(null);
+              setGenerating(false);
+              setJobError(null);
+            }}
           />
         ) : generating ? (
           /* View 2: Live Generation Stepper */

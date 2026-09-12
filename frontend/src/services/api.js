@@ -93,32 +93,33 @@ function parseStructuredConcept(concept) {
  * Intelligent Script Generation via Gemini API or Dynamic NLP Intent Structuring.
  */
 async function generateSmartScript({ concept, title, language, style, cta, apiKey }) {
-  // If user provided a Gemini API Key, use Google Gemini AI directly!
-  if (apiKey && apiKey.trim().startsWith('AIza')) {
-    try {
-      const prompt = `You are a world-class viral short-form video scriptwriter for Instagram Reels and YouTube Shorts (like HeyGen).
-Analyze this user concept and write a coherent, natural, engaging 20-23 second video script divided into exactly 3 connected segments.
-If the concept contains structured steps, ingredients, tips, or an app download CTA:
-- Preserve every step in strict chronological order in Segment 2.
-- Introduce required items/ingredients in Segment 1 alongside a powerful problem/intrigue hook.
-- Conclude with the smart tip and the specific Call to Action (e.g. app download) in Segment 3.
+  // Check for passed apiKey or saved key in browser storage
+  const effectiveApiKey = apiKey?.trim() || (typeof localStorage !== 'undefined' ? (localStorage.getItem('ai_shorts_studio_gemini_key') || '').trim() : '');
 
-Language: ${language} (write natively in ${language}, with natural fluent conversational phrasing).
-Video Style: ${style}
+  // 1. Google Gemini AI Generation (When API Key is available)
+  if (effectiveApiKey && effectiveApiKey.startsWith('AIza')) {
+    try {
+      const prompt = `You are a world-class viral short-form video scriptwriter for Instagram Reels and YouTube Shorts.
+Analyze this user concept and topic, and write a coherent, natural, engaging 20-23 second video script divided into exactly 3 connected segments.
+
+CRITICAL INSTRUCTIONS:
+- Base the entire script STRICTLY on the user's provided topic and concept.
+- DO NOT mention vinegar, newspapers, or unrelated household items unless they are explicitly written in the user's concept!
+- If the concept includes chronological steps (1, 2, 3...), preserve them faithfully in Segment 2.
+- If the concept includes required items or ingredients, introduce them in Segment 1 with a hook.
+- Segment 3 must deliver the payoff, pro tip, and conclude with the user's Call to Action.
+
+User Title/Topic: ${title || 'Smart Hack'}
 User Concept:
 ${concept}
 
 Call to Action (CTA): ${cta || 'Follow for more daily tips!'}
+Language: ${language} (write natively in ${language}, with natural fluent conversational phrasing)
+Video Style: ${style}
 
-Strict requirements:
-1. Segment 1: Hook / Problem / Context (approx 6-7 seconds)
-2. Segment 2: Action / Solution / Demonstration (approx 7-8 seconds)
-3. Segment 3: Climax / Result / Call to Action (approx 6-7 seconds)
-Total spoken duration must be approximately 20-22 seconds.
-
-Respond ONLY with valid JSON in this exact structure, no markdown backticks:
+Output ONLY valid JSON in this exact structure, with no markdown backticks:
 {
-  "master_script": "full narrative",
+  "master_script": "full combined narration",
   "estimated_duration": 21.5,
   "segments": [
     {
@@ -145,38 +146,42 @@ Respond ONLY with valid JSON in this exact structure, no markdown backticks:
   ]
 }`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
-        if (parsed.master_script && parsed.segments?.length === 3) {
-          return parsed;
+      // Try gemini-2.5-flash, fallback to gemini-1.5-flash
+      const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+      for (const m of models) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${effectiveApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            if (parsed.master_script && parsed.segments?.length === 3) {
+              return parsed;
+            }
+          }
+        } catch (e) {
+          console.warn(`Gemini model ${m} attempt failed, trying fallback:`, e);
         }
       }
     } catch (err) {
-      console.warn('Gemini API call fallback to smart NLP parser:', err);
+      console.warn('Gemini API call failed, falling back to smart NLP engine:', err);
     }
   }
 
-  // Smart Context-Aware Fallback (No generic random line jumping)
+  // 2. Smart Dynamic NLP Fallback (100% User-Matched, ZERO Hardcoded Vinegar)
   const parsed = parseStructuredConcept(concept);
   const cleanConcept = (concept || '').replace(/https?:\/\/\S+/g, '').trim();
   const sentences = cleanConcept.split(/[.!?।\n]+/).map(s => s.trim()).filter(s => s.length > 3);
-  const subject = title || parsed.header || sentences[0] || 'Life Hack';
+  const subject = title || parsed.header || sentences[0] || 'Smart Hack';
   const cleanCta = parsed.cta || cta || 'Follow for more daily tips!';
   const hasSteps = parsed.steps.length >= 2;
 
   const isApp = /\b(app|application|download|install|play store|ios|android|ghar|mantra)\b/i.test(cleanConcept + ' ' + cleanCta);
-  const isTip = /\b(clean|kitchen|hack|trick|recipe|cook|secret|fresh|शीशे|दाग|खिड़की|सिरका|अखबार)\b/i.test(cleanConcept);
 
   let seg1Narration = '';
   let seg1Text = '';
@@ -190,150 +195,155 @@ Respond ONLY with valid JSON in this exact structure, no markdown backticks:
 
   if (language === 'Hindi') {
     if (hasSteps) {
-      const itemsStr = parsed.items.join(' ').replace(/सामग्री|Required Items/gi, '').trim();
-      const condensedItems = (itemsStr.includes('सिरका') || itemsStr.includes('अखबार'))
-        ? 'सफेद सिरका, पानी, स्प्रे बोतल और पुराना अखबार'
-        : (itemsStr.slice(0, 50) || 'जरूरी सामग्री');
+      const itemsClean = parsed.items.map(it => it.replace(/सामग्री|Required Items/gi, '').trim()).filter(Boolean);
+      const itemsStr = itemsClean.join(', ');
 
-      seg1Narration = `क्या आप भी खिड़कियों और शीशों के जिद्दी दाग-धब्बों से परेशान हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! बस आपको चाहिए ${condensedItems}।`;
-      seg1Text = 'शीशे चमकाएं बिना दाग! ✨';
-      seg1Desc = 'Vertical 9:16 closeup. Smudged glass window transitioning to required items on clean table.';
+      if (itemsStr) {
+        seg1Narration = `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: ${itemsStr}।`;
+      } else {
+        seg1Narration = `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!`;
+      }
+      seg1Text = `${subject.slice(0, 28)}! ✨`;
+      seg1Desc = `Vertical 9:16 closeup. Introducing ${subject} and required preparation on clean surface.`;
 
-      seg2Narration = 'स्प्रे बोतल में 1:1 अनुपात में सिरका और पानी मिलाकर हिलाएं। शीशे पर हल्का स्प्रे करें, और पुराने अखबार की गेंद बनाकर गोल-गोल घुमाते हुए पोंछ लें।';
-      seg2Text = '1:1 सिरका + पानी स्प्रे करें 🧽';
-      seg2Desc = 'Vertical 9:16 closeup. Hands misting solution on glass and wiping in circular motions with newspaper.';
+      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
+        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim();
+        return `स्टेप ${i + 1}: ${cleanSt}`;
+      });
+      seg2Narration = stepParts.join('। ') + '।';
+      const firstStepShort = (parsed.steps[0] || '').replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim().slice(0, 24);
+      seg2Text = `स्टेप 1: ${firstStepShort || 'शुरू करें'} 🎯`;
+      seg2Desc = `Vertical 9:16 closeup demonstration. Active execution of: ${firstStepShort}.`;
 
-      const tipStr = parsed.tips[0] || 'अखबार से पोंछने पर कोई रोआं या दाग नहीं रहता और शीशा बिल्कुल चमक उठता है';
-      const appCta = (cleanConcept.toLowerCase().includes('gharmantra') || cleanConcept.includes('घरमंत्रा'))
-        ? 'घरमंत्रा ऐप अभी डाउनलोड करें!'
-        : `${cleanCta}!`;
-      seg3Narration = `${tipStr}। ऐसे ही और काम के होम टिप्स के लिए, ${appCta}`;
-      seg3Text = 'घरमंत्रा ऐप डाउनलोड करें 📲';
-      seg3Desc = 'Vertical 9:16. Sparkling crystal clear glass reflecting bright light, with GharMantra app badge.';
+      const tipStr = parsed.tips[0] || 'यह आसान तरीका आपके काम को बेहद आसान और तेज बना देगा';
+      seg3Narration = `स्मार्ट टिप: ${tipStr}। और अधिक जानकारी के लिए, ${cleanCta}!`;
+      seg3Text = `${cleanCta.slice(0, 28)} 📲`;
+      seg3Desc = `Vertical 9:16 payoff. Showing flawless final outcome with Call to Action badge.`;
+
     } else if (isApp) {
       seg1Narration = `क्या आप भी ${subject} के लिए एक भरोसेमंद और आसान समाधान ढूंढ रहे हैं?`;
-      seg1Text = `${subject} का बेस्ट सोल्यूशन!`;
-      seg1Desc = `Vertical 9:16 closeup. Mobile user looking for ${subject}.`;
+      seg1Text = `${subject.slice(0, 24)} बेस्ट सोल्यूशन!`;
+      seg1Desc = `Vertical 9:16 closeup. Mobile interaction for ${subject}.`;
       
       const coreFeature = sentences[0] || "यहाँ मिलेंगे आपको सभी फीचर्स सिर्फ एक क्लिक में";
-      seg2Narration = `अब सब कुछ होगा आसान! ${coreFeature}। घर बैठे अपने सारे काम चुटकियों में पूरे करें।`;
-      seg2Text = "आसान और तेज सर्विस";
-      seg2Desc = "Vertical 9:16 closeup. Seamless user interface interaction.";
+      seg2Narration = `अब सब कुछ होगा आसान! ${coreFeature.slice(0, 70)}। घर बैठे अपने सारे काम चुटकियों में पूरे करें।`;
+      seg2Text = "आसान और तेज सर्विस ⚡";
+      seg2Desc = "Vertical 9:16 closeup. Seamless user workflow.";
 
-      seg3Narration = `तो देर किस बात की? अभी डाउनलोड करें और लाभ उठाएं! ${cleanCta}`;
-      seg3Text = `अभी डाउनलोड करें!`;
-      seg3Desc = "Vertical 9:16 resolution. Verified app download badge.";
-    } else if (isTip) {
-      seg1Narration = `क्या आप जानते हैं ${subject} का यह सबसे आसान और असरदार घरेलू तरीका?`;
-      seg1Text = `${subject} सीक्रेट ट्रिक!`;
+      seg3Narration = `तो देर किस बात की? अभी लाभ उठाएं! ${cleanCta}`;
+      seg3Text = `${cleanCta.slice(0, 28)} 📲`;
+      seg3Desc = "Vertical 9:16 resolution. Verified action badge.";
+    } else {
+      seg1Narration = `क्या आप जानते हैं ${subject} का यह सबसे आसान और असरदार तरीका?`;
+      seg1Text = `${subject.slice(0, 24)} सीक्रेट ट्रिक!`;
       seg1Desc = `Vertical 9:16 macro. Showing ${subject} in clear focus.`;
 
-      const coreAction = sentences[0] || "इसे सिर्फ 20 सेकंड के लिए आजमाएं";
-      seg2Narration = `बस ध्यान से देखिए: ${coreAction}। यह तरीका तुरंत और जादुई असर दिखाता है।`;
-      seg2Text = "तुरंत असरदार उपाय";
+      const coreAction = sentences[0] || "इसे सिर्फ कुछ ही समय में आजमाकर देखें";
+      seg2Narration = `बस ध्यान से देखिए: ${coreAction.slice(0, 75)}। यह तरीका तुरंत और जादुई असर दिखाता है।`;
+      seg2Text = "तुरंत असरदार उपाय 💡";
       seg2Desc = "Vertical 9:16 closeup. Demonstration in active progress.";
 
-      seg3Narration = `देखिए कितना शानदार रिजल्ट आया है! अगर यह टिप पसंद आई तो ${cleanCta}।`;
-      seg3Text = "शानदार रिजल्ट!";
+      const closing = sentences[1] || "यह बिल्कुल आसान और असरदार है";
+      seg3Narration = `देखिए कितना शानदार परिणाम आया है! ${closing.slice(0, 45)}। ${cleanCta}`;
+      seg3Text = "शानदार परिणाम! ✨";
       seg3Desc = "Vertical 9:16. Impressive finished result.";
-    } else {
-      seg1Narration = `आज हम बात करने वाले हैं ${subject} के बारे में, जो आपकी लाइफ को बहुत आसान बना देगा!`;
-      seg1Text = `${subject} का नया तरीका`;
-      seg1Desc = `Vertical 9:16. Introduction to ${subject}.`;
-
-      const detail = sentences[0] || "इस शानदार तरीके को ध्यान से देखें";
-      seg2Narration = `इसकी सबसे खास बात यह है: ${detail}। यह बेहद असरदार और उपयोगी है।`;
-      seg2Text = "काम का तरीका";
-      seg2Desc = "Vertical 9:16. Active demonstration.";
-
-      seg3Narration = `तो आज ही इसे आजमाकर देखें! ${cleanCta}`;
-      seg3Text = "ट्राई करें!";
-      seg3Desc = "Vertical 9:16. Final outcome.";
     }
+
   } else if (language === 'Marathi') {
     if (hasSteps) {
-      seg1Narration = `खिडक्या आणि काचांवरचे हट्टी डाग कसे घालवायचे? ही सोपी घरगुती ट्रिक नक्की वापरून पहा! तुम्हाला फक्त लागेल पांढरा व्हिनेगर, पाणी आणि जुना वर्तमानपत्र.`;
-      seg1Text = `काचा चमकवा अगदी सोप्या पद्धतीने! ✨`;
-      seg1Desc = 'Vertical 9:16 closeup. Smudged glass transitioning to vinegar and newspaper.';
+      const itemsClean = parsed.items.map(it => it.replace(/सामग्री/gi, '').trim()).filter(Boolean);
+      const itemsStr = itemsClean.join(', ');
 
-      seg2Narration = `स्प्रे बॉटलमध्ये 1:1 प्रमाणात व्हिनेगर आणि पाणी मिसळा. काचेवर हलका स्प्रे करा आणि वर्तमानपत्राचा गोळा करून गोल फिरवत पुसून घ्या.`;
-      seg2Text = `1:1 व्हिनेगर + पाणी स्प्रे करा 🧽`;
-      seg2Desc = 'Vertical 9:16. Wiping glass with newspaper in circular motion.';
+      if (itemsStr) {
+        seg1Narration = `${subject} चा सर्वात सोपा आणि परिणामकारक उपाय! यासाठी तुम्हाला लागेल: ${itemsStr}.`;
+      } else {
+        seg1Narration = `${subject} चा सर्वात सोपा आणि परिणामकारक उपाय नक्की वापरून पहा!`;
+      }
+      seg1Text = `${subject.slice(0, 28)}! ✨`;
+      seg1Desc = `Vertical 9:16 closeup introducing ${subject}.`;
 
-      seg3Narration = `वर्तमानपत्राने पुसल्यामुळे एकही डाग राहत नाही आणि काच लगेच चमकते! अशाच घरगुती टिप्ससाठी, घरमंत्रा ॲप आजच डाउनलोड करा!`;
-      seg3Text = `घरमंत्रा ॲप डाउनलोड करा 📲`;
-      seg3Desc = 'Vertical 9:16. Crystal clean glass with GharMantra app badge.';
-    } else if (isApp) {
-      seg1Narration = `तुम्हीही ${subject} साठी एक सोपा आणि खात्रीशीर पर्याय शोधत आहात का?`;
-      seg1Text = `${subject} चा बेस्ट पर्याय!`;
-      seg1Desc = `Vertical 9:16. Mobile user looking for ${subject}.`;
+      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
+        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim();
+        return `पायरी ${i + 1}: ${cleanSt}`;
+      });
+      seg2Narration = stepParts.join('। ') + '।';
+      seg2Text = 'सोप्या स्टेप्स फॉलो करा 🧽';
+      seg2Desc = 'Vertical 9:16 closeup of demonstration in action.';
 
-      const detail = sentences[0] || "हे देईल तुम्हाला झटपट उपाय";
-      seg2Narration = `आता काळजी सोडा! ${detail}। घरबसल्या सर्व कामे अगदी सहज पूर्ण करा.`;
-      seg2Text = "झटपट आणि सोपी सेवा";
-      seg2Desc = "Vertical 9:16. Quick mobile interaction.";
+      const tipStr = parsed.tips[0] || 'हा उपाय तुमचे काम अतिशय सोपे आणि जलद करेल';
+      seg3Narration = `स्मार्ट टिप: ${tipStr}. अधिक माहितीसाठी, ${cleanCta}!`;
+      seg3Text = `${cleanCta.slice(0, 28)} 📲`;
+      seg3Desc = 'Vertical 9:16. Sparkling result with Call to Action.';
 
-      seg3Narration = `मग वाट कसली बघताय? आजच वापरून पहा! ${cleanCta}`;
-      seg3Text = "आजच ट्राय करा!";
-      seg3Desc = "Vertical 9:16. App download prompt.";
     } else {
       seg1Narration = `${subject} ची ही सोपी ट्रिक तुम्हाला माहीत आहे का?`;
-      seg1Text = `${subject} सोपी ट्रिक!`;
-      seg1Desc = `Vertical 9:16. Opening hook for ${subject}.`;
+      seg1Text = `${subject.slice(0, 24)} सोपी ट्रिक!`;
+      seg1Desc = `Vertical 9:16 opening hook for ${subject}.`;
 
       const detail = sentences[0] || "हा उपाय करून पहा";
-      seg2Narration = `काळजीपूर्वक बघा: ${detail}। हा उपाय अगदी झटपट काम करतो.`;
-      seg2Text = "झटपट रिझल्ट";
-      seg2Desc = "Vertical 9:16. Active demo.";
+      seg2Narration = `काळजीपूर्वक बघा: ${detail.slice(0, 70)}। हा उपाय अगदी झटपट काम करतो.`;
+      seg2Text = "झटपट रिझल्ट ⚡";
+      seg2Desc = "Vertical 9:16 active demo.";
 
       seg3Narration = `बघा किती सुंदर रिझल्ट आला आहे! ही माहिती आवडली असेल तर ${cleanCta}.`;
-      seg3Text = "सुंदर रिझल्ट!";
-      seg3Desc = "Vertical 9:16. Sparkling result.";
+      seg3Text = "सुंदर रिझल्ट! ✨";
+      seg3Desc = "Vertical 9:16 sparkling result.";
     }
+
   } else {
     // English
     if (hasSteps) {
-      seg1Narration = `Tired of struggling with streak marks on your glass windows? Here is the zero-streak hack! All you need is white vinegar, water, a spray bottle, and old newspaper.`;
-      seg1Text = `Zero-Streak Glass Hack ✨`;
-      seg1Desc = 'Vertical 9:16 closeup. Dirty smudged glass window transitioning to vinegar bottle and newspaper.';
+      const itemsClean = parsed.items.map(it => it.replace(/items|required items/gi, '').trim()).filter(Boolean);
+      const itemsStr = itemsClean.join(', ');
 
-      seg2Narration = `Mix equal parts vinegar and water in your spray bottle and shake well. Lightly mist the surface, crumple an old newspaper, and wipe in circular motions.`;
-      seg2Text = `Spray 1:1 Vinegar & Wipe 🧽`;
-      seg2Desc = 'Vertical 9:16 closeup. Hands misting solution on glass and wiping with crumpled newspaper.';
+      if (itemsStr) {
+        seg1Narration = `Looking for the easiest and most effective way to do ${subject}? All you need is: ${itemsStr}.`;
+      } else {
+        seg1Narration = `Looking for the easiest and most effective way to do ${subject}? This genius trick will save your day!`;
+      }
+      seg1Text = `${subject.slice(0, 28)} ✨`;
+      seg1Desc = `Vertical 9:16 closeup introducing ${subject}.`;
 
-      const tip = parsed.tips[0] || 'Unlike cloth, newspaper leaves zero lint or smudges for a crystal-clear shine';
-      const ctaMsg = (cleanConcept.toLowerCase().includes('gharmantra') || cleanConcept.includes('घरमंत्रा'))
-        ? 'download the GharMantra app today!'
-        : `${cleanCta}!`;
-      seg3Narration = `${tip}! For more smart home hacks, ${ctaMsg}`;
-      seg3Text = `Download GharMantra App 📲`;
-      seg3Desc = 'Vertical 9:16. Sparkling reflective glass in bright daylight with GharMantra install badge.';
+      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
+        const cleanSt = st.replace(/^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*/i, '').trim();
+        return `Step ${i + 1}: ${cleanSt}`;
+      });
+      seg2Narration = stepParts.join('. ') + '.';
+      seg2Text = 'Follow the Steps 🧽';
+      seg2Desc = 'Vertical 9:16 demonstration of steps.';
+
+      const tip = parsed.tips[0] || 'This method saves time and delivers flawless results every single time';
+      seg3Narration = `Pro Tip: ${tip}. For more details, ${cleanCta}!`;
+      seg3Text = `${cleanCta.slice(0, 28)} 📲`;
+      seg3Desc = 'Vertical 9:16 sparkling result with CTA.';
+
     } else if (isApp) {
       seg1Narration = `Looking for the ultimate, hassle-free way to handle ${subject}?`;
-      seg1Text = `The Smart ${subject} Solution`;
-      seg1Desc = `Vertical 9:16. High-energy opening introducing ${subject}.`;
+      seg1Text = `The Smart ${subject.slice(0, 20)} Solution`;
+      seg1Desc = `Vertical 9:16 high-energy opening introducing ${subject}.`;
 
       const detail = sentences[0] || "experience verified convenience in seconds";
-      seg2Narration = `Here is the game changer: ${detail}. Everything you need is right at your fingertips.`;
-      seg2Text = "Instant Convenience";
-      seg2Desc = "Vertical 9:16. Sleek app walkthrough.";
+      seg2Narration = `Here is the game changer: ${detail.slice(0, 70)}. Everything you need is right at your fingertips.`;
+      seg2Text = "Instant Convenience ⚡";
+      seg2Desc = "Vertical 9:16 sleek app walkthrough.";
 
       seg3Narration = `Transform your experience today! ${cleanCta}`;
-      seg3Text = "Get Started Today!";
-      seg3Desc = "Vertical 9:16. Verified download CTA.";
+      seg3Text = `${cleanCta.slice(0, 28)} 📲`;
+      seg3Desc = "Vertical 9:16 verified download CTA.";
+
     } else {
       seg1Narration = `Tired of struggling with ${subject}? Here is the 20-second secret you need to know.`;
-      seg1Text = `The 20-Second ${subject} Hack`;
-      seg1Desc = `Vertical 9:16 macro. Problem statement on ${subject}.`;
+      seg1Text = `The 20-Second ${subject.slice(0, 18)} Hack`;
+      seg1Desc = `Vertical 9:16 problem statement on ${subject}.`;
 
       const detail = sentences[0] || "watch the technique in active motion";
-      seg2Narration = `Watch closely: ${detail}. Notice how smoothly and quickly it takes effect.`;
-      seg2Text = "Watch the Technique";
-      seg2Desc = "Vertical 9:16 closeup. Smooth technique in action.";
+      seg2Narration = `Watch closely: ${detail.slice(0, 70)}. Notice how smoothly and quickly it takes effect.`;
+      seg2Text = "Watch the Technique 💡";
+      seg2Desc = "Vertical 9:16 closeup smooth technique in action.";
 
-      seg3Narration = `Look at that crystal clear result! Never struggle again. ${cleanCta}`;
-      seg3Text = "Flawless Result!";
-      seg3Desc = "Vertical 9:16. Flawless outcome with final CTA.";
+      seg3Narration = `Look at that impressive result! Never struggle again. ${cleanCta}`;
+      seg3Text = "Flawless Result! ✨";
+      seg3Desc = "Vertical 9:16 flawless outcome with final CTA.";
     }
   }
 
@@ -773,7 +783,16 @@ export async function listProjects() {
 export async function getProject(projectId) {
   try {
     const res = await fetch(`${BASE_URL}/api/projects/${projectId}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.assembly?.final_video_url && data.assembly.final_video_url.startsWith('/')) {
+        data.assembly.final_video_url = `${BASE_URL}${data.assembly.final_video_url}`;
+      }
+      if (data.assembly?.subtitles_url && data.assembly.subtitles_url.startsWith('/')) {
+        data.assembly.subtitles_url = `${BASE_URL}${data.assembly.subtitles_url}`;
+      }
+      return data;
+    }
   } catch (e) {}
 
   const db = getLocalDB();
@@ -845,7 +864,13 @@ export async function approveAndGenerate(payload) {
 export async function getGenerationStatus(jobId) {
   try {
     const res = await fetch(`${BASE_URL}/api/generation/status/${jobId}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.final_video_url && data.final_video_url.startsWith('/')) {
+        data.final_video_url = `${BASE_URL}${data.final_video_url}`;
+      }
+      return data;
+    }
   } catch (e) {}
 
   const db = getLocalDB();
