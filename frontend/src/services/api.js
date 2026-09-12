@@ -542,6 +542,88 @@ function createBrowserVideoBlob(title, segments) {
           ctx.fillRect(0, 0, 720, 1280);
         }
 
+        // --- REAL DYNAMIC MOTION PHYSICS LAYER ---
+        if (currentSegment === 1) {
+          // Scene 1: Animated Liquid Mist Spray Particles
+          const sprayProgress = (frame % 30) / 30;
+          ctx.save();
+          for (let i = 0; i < 40; i++) {
+            const spread = (i - 20) * 8;
+            const px = 180 + sprayProgress * 380 + Math.sin(i + frame) * 20;
+            const py = 520 + (sprayProgress * spread) + Math.cos(i) * 30;
+            const alpha = Math.max(0, 0.9 - sprayProgress * 0.7);
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5 + (i % 4), 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(224, 242, 254, ${alpha})`;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+          }
+          ctx.restore();
+        } else if (currentSegment === 2) {
+          // Scene 2: Circular Wiping Action Motion (Newspaper / Wiper Sweep)
+          const wipeAngle = ((frame - 30) / 30) * Math.PI * 4;
+          const wipeX = 360 + Math.cos(wipeAngle) * 160;
+          const wipeY = 600 + Math.sin(wipeAngle) * 110;
+
+          ctx.save();
+          // Clean glass transparent streak
+          ctx.beginPath();
+          ctx.arc(wipeX, wipeY, 120, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Wiper Pad / Crumpled Newspaper Graphic
+          ctx.beginPath();
+          ctx.arc(wipeX, wipeY, 70, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(241, 245, 249, 0.85)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+          ctx.shadowBlur = 20;
+          ctx.fill();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('WIPING 🧽', wipeX, wipeY + 5);
+          ctx.restore();
+        } else {
+          // Scene 3: Sunlight Flare Star Glints & Sparkling Clean Payoff
+          const flareTime = frame / 30;
+          ctx.save();
+          const glints = [
+            { x: 260, y: 460, phase: 0 },
+            { x: 480, y: 560, phase: 2 },
+            { x: 360, y: 720, phase: 4 }
+          ];
+          glints.forEach(g => {
+            const glintSize = 25 + Math.sin(flareTime * 8 + g.phase) * 18;
+            if (glintSize > 10) {
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 3.5;
+              ctx.shadowColor = '#67e8f9';
+              ctx.shadowBlur = 25;
+              ctx.beginPath();
+              ctx.moveTo(g.x - glintSize, g.y);
+              ctx.lineTo(g.x + glintSize, g.y);
+              ctx.moveTo(g.x, g.y - glintSize);
+              ctx.lineTo(g.x, g.y + glintSize);
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.arc(g.x, g.y, 6, 0, Math.PI * 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+            }
+          });
+          ctx.restore();
+        }
+
         // Top Brand Header
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
