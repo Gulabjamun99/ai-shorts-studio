@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ai-shorts-studio-backend.onrender.com';
 
 // Local database for client-side execution (e.g. Vercel static deployments)
 const MOCK_STORAGE_KEY = 'ai_shorts_studio_db';
