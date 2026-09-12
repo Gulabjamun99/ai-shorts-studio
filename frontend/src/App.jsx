@@ -23,6 +23,8 @@ export default function App() {
   const [scriptApprovalData, setScriptApprovalData] = useState(null);
   const [pendingVersionId, setPendingVersionId] = useState(null);
   const [pendingProjectId, setPendingProjectId] = useState(null);
+  const [selectedProvider, setSelectedProvider] = useState('mock');
+  const [selectedApiKey, setSelectedApiKey] = useState('');
   
   // Generation state
   const [activeJobId, setActiveJobId] = useState(null);
@@ -91,6 +93,9 @@ export default function App() {
     setCreatingScript(true);
     setJobError(null);
     try {
+      setSelectedProvider(formData.provider || 'mock');
+      setSelectedApiKey(formData.apiKey || '');
+
       const res = await createProject({
         title: formData.title,
         concept: formData.concept,
@@ -100,7 +105,8 @@ export default function App() {
         voice_gender: formData.voice_gender,
         voice_tone: formData.voice_tone,
         cta: formData.cta,
-        apiKey: formData.apiKey
+        apiKey: formData.apiKey,
+        provider: formData.provider
       });
 
       // Upload any assets attached
@@ -135,7 +141,8 @@ export default function App() {
         version_id: pendingVersionId,
         edited_script: masterScript,
         edited_segments: segments,
-        provider_name: 'mock'
+        provider_name: selectedProvider,
+        api_key: selectedApiKey
       });
 
       setScriptApprovalData(null);
@@ -161,7 +168,8 @@ export default function App() {
         project_id: currentProject.project.id,
         version_id: currentProject.version.id,
         segment_index: segIndex,
-        provider_name: 'mock'
+        provider_name: selectedProvider,
+        api_key: selectedApiKey
       });
       setActiveJobId(res.job_id);
     } catch (err) {
@@ -229,7 +237,8 @@ export default function App() {
               title: currentProject.project.title,
               duration_sec: currentProject.assembly.duration_sec,
               language: currentProject.project.language,
-              platform: currentProject.project.platform
+              platform: currentProject.project.platform,
+              narration: currentProject.script?.master_script || currentProject.segments?.map(s => s.narration).join(' ')
             }}
             onRegenerateSegment={handleRegenerateSegment}
             onPublish={() => setShowPublishModal(true)}

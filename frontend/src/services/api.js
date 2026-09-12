@@ -374,6 +374,43 @@ export function getBlobFromStore(url) {
   return blobStore.get(url);
 }
 
+const THEME_IMAGES = {
+  cleaning: [
+    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=720&q=80'
+  ],
+  cooking: [
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=720&q=80'
+  ],
+  app: [
+    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=720&q=80'
+  ],
+  default: [
+    'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=720&q=80'
+  ]
+};
+
+function getThemeImages(title, segments) {
+  const text = (title + ' ' + (segments || []).map(s => (s.narration || '') + ' ' + (s.on_screen_text || '')).join(' ')).toLowerCase();
+  if (/(सिरका|अखबार|शीशे|दाग|खिड़की|clean|wash|spray|window|glass|stain)/i.test(text)) {
+    return THEME_IMAGES.cleaning;
+  }
+  if (/(food|cook|recipe|kitchen|dish|स्वादिष्ट|खाना|रेसिपी)/i.test(text)) {
+    return THEME_IMAGES.cooking;
+  }
+  if (/(app|download|phone|mobile|service|ऐप|डाउनलोड|gharmantra)/i.test(text)) {
+    return THEME_IMAGES.app;
+  }
+  return THEME_IMAGES.default;
+}
+
 /**
  * Creates an in-browser playable 9:16 vertical video Blob for 100% reliable download & preview on Vercel.
  */
@@ -384,6 +421,15 @@ function createBrowserVideoBlob(title, segments) {
       canvas.width = 720;
       canvas.height = 1280;
       const ctx = canvas.getContext('2d');
+
+      // Preload contextual scene visuals
+      const themeUrls = getThemeImages(title, segments);
+      const preloadedImgs = themeUrls.map(url => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        return img;
+      });
 
       // Check supported mime types
       let mimeType = 'video/webm';
@@ -461,71 +507,91 @@ function createBrowserVideoBlob(title, segments) {
           return;
         }
 
-        // Draw rich vertical 9:16 short
-        const grad = ctx.createLinearGradient(0, 0, 720, 1280);
-        grad.addColorStop(0, '#0a0f1d');
-        grad.addColorStop(0.5, '#161e38');
-        grad.addColorStop(1, '#05070e');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 720, 1280);
+        const currentSegment = frame < 30 ? 1 : frame < 60 ? 2 : 3;
+        const activeImg = preloadedImgs[currentSegment - 1];
 
-        // Dynamic glowing rings
-        const time = frame / 30;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(360, 520, 140 + Math.sin(time * 3) * 15, 0, Math.PI * 2);
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 6;
-        ctx.shadowColor = '#0284c7';
-        ctx.shadowBlur = 30;
-        ctx.stroke();
-        ctx.restore();
+        // Draw visual background (Image or rich gradient fallback)
+        if (activeImg && activeImg.complete && activeImg.naturalWidth > 0) {
+          const segProgress = (frame % 30) / 30;
+          const scale = 1.0 + segProgress * 0.08; // Smooth cinematic Ken Burns zoom
+          const w = 720 * scale;
+          const h = 1280 * scale;
+          const x = (720 - w) / 2;
+          const y = (1280 - h) / 2;
+          ctx.drawImage(activeImg, x, y, w, h);
+
+          // Dark cinematic scrims for readable text
+          const topScrim = ctx.createLinearGradient(0, 0, 0, 360);
+          topScrim.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+          topScrim.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = topScrim;
+          ctx.fillRect(0, 0, 720, 360);
+
+          const botScrim = ctx.createLinearGradient(0, 900, 0, 1280);
+          botScrim.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          botScrim.addColorStop(0.3, 'rgba(0, 0, 0, 0.75)');
+          botScrim.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+          ctx.fillStyle = botScrim;
+          ctx.fillRect(0, 900, 720, 380);
+        } else {
+          const grad = ctx.createLinearGradient(0, 0, 720, 1280);
+          grad.addColorStop(0, '#0a0f1d');
+          grad.addColorStop(0.5, '#161e38');
+          grad.addColorStop(1, '#05070e');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 720, 1280);
+        }
 
         // Top Brand Header
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(title || 'AI Shorts Studio', 360, 220);
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 10;
+        ctx.fillText(title || 'AI Shorts Studio', 360, 160);
+        ctx.shadowBlur = 0;
 
         // Verification Pill
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-        ctx.fillRect(200, 255, 320, 44);
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(200, 255, 320, 44);
-        ctx.fillStyle = '#34d399';
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
+        ctx.fillRect(200, 195, 320, 42);
+        ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 18px sans-serif';
-        ctx.fillText('✓ 9:16 Vertical Short (1080x1920)', 360, 283);
+        ctx.fillText('✓ 9:16 Vertical Short (1080x1920)', 360, 222);
 
-        // Scene status & Icon
-        const currentSegment = frame < 30 ? 1 : frame < 60 ? 2 : 3;
+        // Scene status badge
         const sceneLabel = currentSegment === 1
-          ? 'Scene 1: Hook & Ingredients'
+          ? 'Scene 1: Hook & Required Items'
           : currentSegment === 2
-          ? 'Scene 2: Demonstration Steps'
-          : 'Scene 3: Result & GharMantra CTA';
+          ? 'Scene 2: Demonstration & Action Steps'
+          : 'Scene 3: Sparkling Result & GharMantra CTA';
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(sceneLabel, 360, 730);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+        ctx.fillRect(160, 255, 400, 36);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(160, 255, 400, 36);
 
-        // Animated progress line
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        ctx.fillRect(60, 800, 600, 6);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText(sceneLabel, 360, 279);
+
+        // Animated progress bar
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(60, 960, 600, 6);
         ctx.fillStyle = '#6366f1';
-        ctx.fillRect(60, 800, 600 * (frame / totalFrames), 6);
+        ctx.fillRect(60, 960, 600 * (frame / totalFrames), 6);
 
         // Subtitle bar in safe margins (1000px down)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(40, 960, 640, 140);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(40, 960, 640, 140);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(40, 990, 640, 140);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(40, 990, 640, 140);
 
         const currentCaption = currentSegment === 1 ? seg1Text : currentSegment === 2 ? seg2Text : seg3Text;
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillText(currentCaption, 360, 1040);
+        ctx.fillText(currentCaption, 360, 1070);
 
         frame++;
         setTimeout(renderFrame, 1000 / 30);

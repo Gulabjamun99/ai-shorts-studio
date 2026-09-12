@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-shorts-studio-backend
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: HOST
+        value: 0.0.0.0

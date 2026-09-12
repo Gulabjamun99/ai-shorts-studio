@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import {
   Play, Pause, Download, Share2, ShieldCheck,
-  CheckCircle2, AlertCircle, Sparkles, Sliders, Music, Video, RefreshCw, RotateCcw
+  CheckCircle2, AlertCircle, Sparkles, Sliders, Music, Video, RefreshCw, RotateCcw,
+  Volume2, VolumeX
 } from 'lucide-react';
 
 import { getBlobFromStore } from '../services/api';
@@ -18,7 +19,33 @@ export default function VideoPlayerWithQA({
   const [rerolling, setRerolling] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [speaking, setSpeaking] = useState(false);
   const videoRef = useRef(null);
+
+  const toggleSpeech = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+    } else {
+      const text = metadata.narration || metadata.title || '';
+      if (!text) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (metadata.language === 'Hindi') {
+        utterance.lang = 'hi-IN';
+      } else if (metadata.language === 'Marathi') {
+        utterance.lang = 'mr-IN';
+      } else {
+        utterance.lang = 'en-US';
+      }
+      utterance.rate = 1.05;
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => setSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      setSpeaking(true);
+    }
+  };
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -188,19 +215,31 @@ export default function VideoPlayerWithQA({
         <div className="md:col-span-7 space-y-6">
           
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={handleDownload}
               disabled={downloading || !videoUrl}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition text-center disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition text-center disabled:opacity-50"
             >
               <Download className={`w-4 h-4 ${downloading ? 'animate-bounce' : ''}`} />
               {downloading ? 'Preparing...' : 'Download MP4'}
             </button>
 
             <button
+              onClick={toggleSpeech}
+              className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border font-bold text-xs transition ${
+                speaking
+                  ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700'
+              }`}
+            >
+              {speaking ? <VolumeX className="w-4 h-4 text-amber-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+              {speaking ? 'Stop Voice' : 'Hear Voiceover'}
+            </button>
+
+            <button
               onClick={onPublish}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition"
+              className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition"
             >
               <Share2 className="w-4 h-4" />
               Publish Social
@@ -209,7 +248,7 @@ export default function VideoPlayerWithQA({
             <button
               onClick={handlePartialRegenerate}
               disabled={rerolling}
-              className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs border border-gray-700 transition"
+              className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs border border-gray-700 transition"
             >
               <RefreshCw className={`w-4 h-4 ${rerolling ? 'animate-spin' : ''}`} />
               Re-Roll Scene
