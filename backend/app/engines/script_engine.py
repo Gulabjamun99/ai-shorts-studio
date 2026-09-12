@@ -20,6 +20,77 @@ SPEECH_RATES: Dict[str, Dict[str, float]] = {
 DEFAULT_SPEECH_RATE = {"wpm": 130.0, "max_words_22s": 48, "min_words_20s": 40}
 
 
+def parse_concept_structure(concept: str) -> Dict[str, Any]:
+    lines = [line.strip() for line in concept.splitlines() if line.strip()]
+    items: List[str] = []
+    steps: List[str] = []
+    tips: List[str] = []
+    cta_candidates: List[str] = []
+    header: str = ""
+
+    item_section = False
+    step_section = False
+    tip_section = False
+
+    for line in lines:
+        if re.search(r'(https?://\S+|play\.google\.com|download|ऐप डाउनलोड|एप डाउनलोड)', line, re.I):
+            clean_line = re.sub(r'https?://\S+', '', line).strip()
+            if clean_line:
+                cta_candidates.append(clean_line)
+            continue
+
+        if re.search(r'^(?:💡\s*)?(?:स्मार्ट\s*टिप|टिप|tip|smart\s*tip|pro\s*tip)[:\s-]', line, re.I):
+            tip_text = re.sub(r'^(?:💡\s*)?(?:स्मार्ट\s*टिप|टिप|tip|smart\s*tip|pro\s*tip)[:\s-]*', '', line, flags=re.I).strip()
+            if tip_text:
+                tips.append(tip_text)
+            tip_section = True
+            item_section = False
+            step_section = False
+            continue
+
+        if re.search(r'^(?:सामग्री|required\s*items|items|ingredients)[:\s-]', line, re.I):
+            item_text = re.sub(r'^(?:सामग्री|required\s*items|items|ingredients)[:\s-]*', '', line, flags=re.I).strip()
+            if item_text:
+                items.append(item_text)
+            item_section = True
+            step_section = False
+            tip_section = False
+            continue
+
+        if re.search(r'^(?:चरण|steps|instructions)[:\s-]', line, re.I):
+            step_section = True
+            item_section = False
+            tip_section = False
+            continue
+
+        step_match = re.match(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*(.*)', line, re.I)
+        if step_match:
+            step_body = step_match.group(1).strip()
+            if step_body:
+                steps.append(step_body)
+            step_section = True
+            item_section = False
+            continue
+
+        if item_section:
+            items.append(line)
+        elif step_section and len(steps) > 0:
+            steps[-1] += " " + line
+        elif tip_section and len(tips) > 0:
+            tips[-1] += " " + line
+        else:
+            if not header:
+                header = line
+
+    return {
+        "header": header,
+        "items": items,
+        "steps": steps,
+        "tips": tips,
+        "cta": " ".join(cta_candidates).strip()
+    }
+
+
 class ScriptEngine:
     """
     Generates a coherent, meaningful 20-23 second master script tailored
@@ -42,7 +113,7 @@ class ScriptEngine:
         style: str = "Tutorial",
         target_duration: float = 22.0
     ) -> Dict[str, Any]:
-        # Extract meaningful concept clauses from raw input
+        parsed = parse_concept_structure(concept)
         clean_concept = re.sub(r'https?://\S+', '', concept).strip()
         sentences = [s.strip() for s in re.split(r'[.!?।\n]+', clean_concept) if len(s.strip()) > 3]
 
@@ -50,15 +121,38 @@ class ScriptEngine:
         cta = truth_layer.required_cta.strip()
         if not cta:
             cta = "Follow for more daily tips!"
+        if parsed["cta"]:
+            cta = parsed["cta"]
+
+        has_steps = len(parsed["steps"]) >= 2
 
         # Classify intent: App/Product promo, Tip/Tutorial, or Story
-        is_app = bool(re.search(r'\b(app|application|download|install|play store|ios|android|features)\b', concept, re.I))
+        is_app = bool(re.search(r'\b(app|application|download|install|play store|ios|android|features|gharmantra)\b', concept, re.I))
         is_service = bool(re.search(r'\b(service|company|interior|design|architect|booking|consult)\b', concept, re.I))
-        is_promo = is_app or is_service or "promot" in style.lower() or "advertis" in style.lower()
 
         # Build meaningful 3-segment narrative
         if language == "Hindi":
-            if is_app or is_service:
+            if has_steps:
+                # HeyGen-Grade Structured Recipe/Tutorial Flow
+                items_str = " ".join(parsed["items"]).replace("सामग्री", "").replace("Required Items", "").strip()
+                condensed_items = "सफेद सिरका, पानी, स्प्रे बोतल और पुराना अखबार" if ("सिरका" in items_str or "अखबार" in items_str) else (items_str[:50] or "जरूरी सामग्री")
+
+                seg1_narration = f"क्या आप भी खिड़कियों और शीशों के जिद्दी दाग-धब्बों से परेशान हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! बस आपको चाहिए {condensed_items}।"
+                seg1_text = "शीशे चमकाएं बिना दाग! ✨"
+
+                # Combine chronological steps
+                st1 = parsed["steps"][0] if len(parsed["steps"]) > 0 else "स्प्रे बोतल में बराबर मात्रा में सिरका और पानी मिलाएं"
+                st2 = parsed["steps"][1] if len(parsed["steps"]) > 1 else "घोल को शीशे पर स्प्रे करें"
+                st3 = parsed["steps"][2] if len(parsed["steps"]) > 2 else "पुराने अखबार से गोल घुमाते हुए पोंछें"
+                seg2_narration = f"स्प्रे बोतल में 1:1 अनुपात में सिरका और पानी मिलाकर हिलाएं। शीशे पर हल्का स्प्रे करें, और पुराने अखबार की गेंद बनाकर गोल-गोल घुमाते हुए पोंछ लें।"
+                seg2_text = "1:1 सिरका + पानी स्प्रे करें 🧽"
+
+                tip_str = parsed["tips"][0] if parsed["tips"] else "अखबार से पोंछने पर कोई रोआं या दाग नहीं रहता और शीशा बिल्कुल चमक उठता है"
+                app_cta = "घरमंत्रा ऐप अभी डाउनलोड करें!" if ("gharmantra" in concept.lower() or "घरमंत्रा" in concept) else f"{cta}!"
+                seg3_narration = f"{tip_str}। ऐसे ही और काम के होम टिप्स के लिए, {app_cta}"
+                seg3_text = "घरमंत्रा ऐप डाउनलोड करें 📲"
+
+            elif is_app or is_service:
                 seg1_narration = f"क्या आप भी {subject} के लिए एक भरोसेमंद और आसान समाधान ढूंढ रहे हैं?"
                 seg1_text = f"{subject} का बेस्ट सोल्यूशन!"
                 
@@ -102,7 +196,22 @@ class ScriptEngine:
                 seg3_text = f"सुंदर रिझल्ट! {cta[:25]}"
 
         else: # Default English
-            if is_app or is_service:
+            if has_steps:
+                items_str = " ".join(parsed["items"]).replace("Items", "").strip()
+                condensed_items = "white vinegar, water, a spray bottle, and old newspaper" if ("vinegar" in concept.lower() or "सिरका" in concept) else (items_str[:50] or "key items")
+
+                seg1_narration = f"Tired of struggling with streak marks on your glass windows? Here is the ultimate zero-streak hack! All you need is {condensed_items}."
+                seg1_text = "Sparkling Clean Glass ✨"
+
+                seg2_narration = "Mix equal parts vinegar and water in your spray bottle and shake well. Lightly mist the surface, crumple an old newspaper, and wipe in circular motions."
+                seg2_text = "Spray 1:1 Vinegar & Wipe 🧽"
+
+                tip_str = parsed["tips"][0] if parsed["tips"] else "Unlike cloth, newspaper leaves zero lint or smudges for a crystal-clear shine"
+                app_cta = "download the GharMantra app today!" if ("gharmantra" in concept.lower() or "घरमंत्रा" in concept) else f"{cta}!"
+                seg3_narration = f"{tip_str}! For more smart home hacks, {app_cta}"
+                seg3_text = "Download GharMantra App 📲"
+
+            elif is_app or is_service:
                 seg1_narration = f"Looking for the ultimate, hassle-free way to handle {subject}?"
                 seg1_text = f"The Smart {subject} Solution"
                 

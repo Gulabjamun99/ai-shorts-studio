@@ -4,6 +4,8 @@ import {
   CheckCircle2, AlertCircle, Sparkles, Sliders, Music, Video, RefreshCw, RotateCcw
 } from 'lucide-react';
 
+import { getBlobFromStore } from '../services/api';
+
 export default function VideoPlayerWithQA({
   videoUrl,
   subtitlesUrl,
@@ -33,16 +35,36 @@ export default function VideoPlayerWithQA({
     if (!videoUrl) return;
     setDownloading(true);
     try {
-      const filename = `${(metadata.title || 'ai_short').replace(/[^a-zA-Z0-9_-]/g, '_')}_1080x1920.mp4`;
+      const cleanTitle = (metadata.title || 'ai_short').replace(/[^a-zA-Z0-9_\u0900-\u097F-]/g, '_');
+      const filename = `${cleanTitle}_1080x1920.mp4`;
 
-      if (videoUrl.startsWith('blob:')) {
+      // 1. Check in-memory blob store
+      const storedBlob = getBlobFromStore(videoUrl);
+      if (storedBlob) {
+        const directUrl = window.URL.createObjectURL(storedBlob);
+        const link = document.createElement('a');
+        link.href = directUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(directUrl), 1000);
+        return;
+      }
+
+      // 2. If blob or data url
+      if (videoUrl.startsWith('blob:') || videoUrl.startsWith('data:')) {
         const link = document.createElement('a');
         link.href = videoUrl;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } else {
+        return;
+      }
+
+      // 3. Remote URL
+      try {
         const response = await fetch(videoUrl);
         const blob = await response.blob();
         const blobUrl = window.URL.createObjectURL(blob);
@@ -52,11 +74,18 @@ export default function VideoPlayerWithQA({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+      } catch (corsErr) {
+        const link = document.createElement('a');
+        link.href = videoUrl;
+        link.target = '_blank';
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (err) {
-      console.warn('Direct blob download failed, opening direct link:', err);
-      window.open(videoUrl, '_blank');
+      console.error('Download error:', err);
     } finally {
       setDownloading(false);
     }

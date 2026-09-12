@@ -22,6 +22,7 @@ export default function App() {
   const [currentProject, setCurrentProject] = useState(null);
   const [scriptApprovalData, setScriptApprovalData] = useState(null);
   const [pendingVersionId, setPendingVersionId] = useState(null);
+  const [pendingProjectId, setPendingProjectId] = useState(null);
   
   // Generation state
   const [activeJobId, setActiveJobId] = useState(null);
@@ -66,9 +67,11 @@ export default function App() {
           setGenerating(false);
           clearInterval(interval);
           // Reload project details to show final video
-          if (res.project_id) {
-            const updated = await getProject(res.project_id);
+          const pId = res.project_id || pendingProjectId;
+          if (pId) {
+            const updated = await getProject(pId);
             setCurrentProject(updated);
+            loadProjects();
           }
         } else if (res.current_state === 'FAILED') {
           setGenerating(false);
@@ -78,10 +81,10 @@ export default function App() {
       } catch (e) {
         console.error('Status poll error:', e);
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearInterval(interval);
-  }, [activeJobId, generating]);
+  }, [activeJobId, generating, pendingProjectId]);
 
   // Handle Initial Concept Submission -> Generates Master Script
   const handleCreateProject = async (formData) => {
@@ -96,7 +99,8 @@ export default function App() {
         style: formData.style,
         voice_gender: formData.voice_gender,
         voice_tone: formData.voice_tone,
-        cta: formData.cta
+        cta: formData.cta,
+        apiKey: formData.apiKey
       });
 
       // Upload any assets attached
@@ -110,6 +114,7 @@ export default function App() {
         }
       }
 
+      setPendingProjectId(res.project_id);
       setPendingVersionId(res.version_id);
       setScriptApprovalData(res.script_approval_data);
       loadProjects();
@@ -126,6 +131,7 @@ export default function App() {
     setApprovingScript(true);
     try {
       const res = await approveAndGenerate({
+        project_id: pendingProjectId,
         version_id: pendingVersionId,
         edited_script: masterScript,
         edited_segments: segments,
@@ -152,6 +158,7 @@ export default function App() {
     setJobStatus(`GENERATING_SEGMENT_${segIndex}`);
     try {
       const res = await regenerateSegment({
+        project_id: currentProject.project.id,
         version_id: currentProject.version.id,
         segment_index: segIndex,
         provider_name: 'mock'
