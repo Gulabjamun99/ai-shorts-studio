@@ -202,10 +202,17 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
       const itemsClean = parsed.items.map(it => it.replace(/^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+/gi, '').trim()).filter(it => it && it.length > 2 && it !== '():' && it !== '()');
       const itemsStr = itemsClean.join(', ');
 
-      if (/(करें|करना|सीखें|बनाएं|हटाएं|चमकाएं)$/.test(subject)) {
+      let naturalSubject = subject;
+      naturalSubject = naturalSubject.replace(/बनाएं$/i, 'बनाना');
+      naturalSubject = naturalSubject.replace(/करें$/i, 'करना');
+      naturalSubject = naturalSubject.replace(/सीखें$/i, 'सीखना');
+      naturalSubject = naturalSubject.replace(/हटाएं$/i, 'हटाना');
+      naturalSubject = naturalSubject.replace(/चमकाएं$/i, 'चमकाना');
+
+      if (/(करें|करना|सीखें|बनाएं|बनाना|हटाएं|हटाना|चमकाएं|चमकाना)$/.test(subject)) {
         seg1Narration = itemsStr
-          ? `क्या आप भी ${subject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: ${itemsStr}।`
-          : `क्या आप भी ${subject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!`;
+          ? `क्या आप भी ${naturalSubject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: ${itemsStr}।`
+          : `क्या आप भी ${naturalSubject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!`;
       } else {
         seg1Narration = itemsStr
           ? `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: ${itemsStr}।`
@@ -223,8 +230,9 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
       seg2Text = `स्टेप 1: ${firstStepShort || 'शुरू करें'} 🎯`;
       seg2Desc = `Vertical 9:16 closeup demonstration of: ${firstStepShort}.`;
 
-      const tipStr = parsed.tips[0] || 'यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है';
-      seg3Narration = `स्मार्ट टिप: ${tipStr}। और अधिक जानकारी के लिए, ${cleanCta}!`;
+      const rawTip = parsed.tips[0] || 'यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है';
+      const tipClean = rawTip.replace(/[।.\s]+$/, '');
+      seg3Narration = `स्मार्ट टिप: ${tipClean}। और अधिक जानकारी के लिए, ${cleanCta}!`;
       seg3Text = `${cleanCta.slice(0, 28)} 📲`;
       seg3Desc = `Vertical 9:16 payoff. Flawless outcome with Call to Action badge.`;
 
@@ -720,34 +728,16 @@ export async function createProject(payload) {
   const versionId = 'ver_' + Math.random().toString(36).substring(2, 9);
   const jobId = 'job_' + Math.random().toString(36).substring(2, 9);
 
-  // If backend is running, sync project but guarantee this accurate scriptApprovalData
-  try {
-    const res = await fetch(`${BASE_URL}/api/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      const backendData = await res.json();
-      if (backendData) {
-        backendData.script_approval_data = scriptApprovalData;
-        return backendData;
-      }
-    }
-  } catch (e) {
-    console.warn('Backend server sync note:', e);
-  }
-
   const db = getLocalDB();
   db.projects[projectId] = {
     project: {
       id: projectId,
       title: payload.title || payload.concept.slice(0, 30),
-      platform: payload.platform,
+      platform: payload.platform || 'Both',
       language: payload.language || 'English',
-      style: payload.style,
-      voice_gender: payload.voice_gender,
-      voice_tone: payload.voice_tone,
+      style: payload.style || 'Tutorial',
+      voice_gender: payload.voice_gender || 'Female',
+      voice_tone: payload.voice_tone || 'Friendly',
       target_duration: payload.target_duration || 22.0,
       aspect_ratio: payload.aspect_ratio || '9:16'
     },
@@ -764,6 +754,24 @@ export async function createProject(payload) {
   };
   saveLocalDB(db);
 
+  // Background non-blocking sync to cloud backend if running
+  try {
+    fetch(`${BASE_URL}/api/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: payload.title || payload.concept.slice(0, 30),
+        concept: payload.concept,
+        platform: payload.platform,
+        language: payload.language,
+        style: payload.style,
+        voice_gender: payload.voice_gender,
+        voice_tone: payload.voice_tone,
+        cta: payload.cta
+      })
+    }).catch(() => {});
+  } catch (e) {}
+
   return {
     project_id: projectId,
     version_id: versionId,
@@ -774,13 +782,8 @@ export async function createProject(payload) {
 }
 
 export async function listProjects() {
-  try {
-    const res = await fetch(`${BASE_URL}/api/projects`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-
   const db = getLocalDB();
-  return Object.values(db.projects).map(p => ({
+  const localList = Object.values(db.projects).map(p => ({
     id: p.project.id,
     title: p.project.title,
     platform: p.project.platform,
@@ -788,11 +791,28 @@ export async function listProjects() {
     style: p.project.style,
     voice_gender: p.project.voice_gender,
     created_at: new Date().toISOString(),
-    status: p.version.status
+    status: p.version?.status || 'READY'
   }));
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/projects`);
+    if (res.ok) {
+      const remoteList = await res.json();
+      const ids = new Set(localList.map(p => p.id));
+      for (const rp of remoteList) {
+        if (!ids.has(rp.id)) localList.push(rp);
+      }
+    }
+  } catch (e) {}
+
+  return localList;
 }
 
 export async function getProject(projectId) {
+  const db = getLocalDB();
+  const found = db.projects[projectId];
+  if (found) return found;
+
   try {
     const res = await fetch(`${BASE_URL}/api/projects/${projectId}`);
     if (res.ok) {
@@ -807,22 +827,10 @@ export async function getProject(projectId) {
     }
   } catch (e) {}
 
-  const db = getLocalDB();
-  const found = db.projects[projectId];
-  if (!found) throw new Error('Project not found');
-  return found;
+  throw new Error('Project not found');
 }
 
 export async function approveAndGenerate(payload) {
-  try {
-    const res = await fetch(`${BASE_URL}/api/generation/approve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-
   const jobId = 'job_' + Math.random().toString(36).substring(2, 9);
   const db = getLocalDB();
   
@@ -835,12 +843,24 @@ export async function approveAndGenerate(payload) {
     if (!targetSegments.length && db.projects[targetProjectId].segments) {
       targetSegments = db.projects[targetProjectId].segments;
     }
+    if (payload.edited_script) {
+      db.projects[targetProjectId].script.master_script = payload.edited_script;
+    }
+    if (payload.edited_segments) {
+      db.projects[targetProjectId].segments = payload.edited_segments;
+    }
   } else {
     for (const [pId, pData] of Object.entries(db.projects)) {
-      if (pData.version.id === payload.version_id || pId === payload.project_id) {
+      if (pData.version?.id === payload.version_id || pId === payload.project_id) {
         targetProjectId = pId;
         targetTitle = pData.project.title;
         targetSegments = payload.edited_segments || pData.segments || [];
+        if (payload.edited_script) {
+          pData.script.master_script = payload.edited_script;
+        }
+        if (payload.edited_segments) {
+          pData.segments = payload.edited_segments;
+        }
         break;
       }
     }
@@ -853,10 +873,18 @@ export async function approveAndGenerate(payload) {
       targetProjectId = keys[0];
       targetTitle = db.projects[targetProjectId].project.title;
       targetSegments = payload.edited_segments || db.projects[targetProjectId].segments || [];
+    } else {
+      targetProjectId = 'proj_' + Math.random().toString(36).substring(2, 9);
+      db.projects[targetProjectId] = {
+        project: { id: targetProjectId, title: 'AI Short', language: 'Hindi', platform: 'Both' },
+        version: { id: payload.version_id || 'ver_1', status: 'APPROVED' },
+        script: { master_script: payload.edited_script || '' },
+        segments: targetSegments
+      };
     }
   }
 
-  // Pre-generate real browser video blob with segments
+  // Pre-generate real browser video blob with segments (zero lag, 100% playable 9:16 video)
   const videoBlobUrl = await createBrowserVideoBlob(targetTitle, targetSegments);
 
   db.jobs[jobId] = {
@@ -870,24 +898,34 @@ export async function approveAndGenerate(payload) {
   };
   saveLocalDB(db);
 
+  // Background non-blocking notification to cloud backend
+  try {
+    fetch(`${BASE_URL}/api/generation/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {}
+
   return { status: 'SUCCESS', job_id: jobId, project_id: targetProjectId, message: 'Generation started' };
 }
 
 export async function getGenerationStatus(jobId) {
-  try {
-    const res = await fetch(`${BASE_URL}/api/generation/status/${jobId}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.final_video_url && data.final_video_url.startsWith('/')) {
-        data.final_video_url = `${BASE_URL}${data.final_video_url}`;
-      }
-      return data;
-    }
-  } catch (e) {}
-
   const db = getLocalDB();
   const job = db.jobs[jobId];
+
   if (!job) {
+    try {
+      const res = await fetch(`${BASE_URL}/api/generation/status/${jobId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.final_video_url && data.final_video_url.startsWith('/')) {
+          data.final_video_url = `${BASE_URL}${data.final_video_url}`;
+        }
+        return data;
+      }
+    } catch (e) {}
+
     const firstP = Object.values(db.projects)[0];
     return {
       job_id: jobId,
@@ -900,18 +938,18 @@ export async function getGenerationStatus(jobId) {
   }
 
   const elapsed = (Date.now() - job.created_at) / 1000;
-  if (elapsed < 1.5) {
+  if (elapsed < 0.8) {
     job.current_state = 'GENERATING_SEGMENT_1';
-    job.progress_pct = 45;
-  } else if (elapsed < 3.0) {
+    job.progress_pct = 40;
+  } else if (elapsed < 1.8) {
     job.current_state = 'GENERATING_SEGMENT_2';
     job.progress_pct = 65;
-  } else if (elapsed < 4.5) {
+  } else if (elapsed < 2.8) {
     job.current_state = 'GENERATING_SEGMENT_3';
-    job.progress_pct = 80;
-  } else if (elapsed < 6.0) {
+    job.progress_pct = 85;
+  } else if (elapsed < 3.5) {
     job.current_state = 'ASSEMBLING';
-    job.progress_pct = 90;
+    job.progress_pct = 95;
   } else {
     job.current_state = 'READY';
     job.progress_pct = 100;

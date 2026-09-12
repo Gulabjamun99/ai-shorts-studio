@@ -3,6 +3,7 @@ services:
     name: ai-shorts-studio-backend
     env: docker
     plan: free
+    autoDeploy: true
     dockerfilePath: Dockerfile
     envVars:
       - key: PORT

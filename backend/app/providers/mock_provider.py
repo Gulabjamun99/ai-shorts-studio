@@ -80,45 +80,63 @@ class MockVideoProvider(BaseVideoProvider):
             str(output_path)
         ]
 
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
-        )
-        await proc.wait()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL
+            )
+            await asyncio.wait_for(proc.wait(), timeout=20.0)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
         # Extract real first frame
-        cmd_ff = [
-            "ffmpeg", "-y",
-            "-ss", "0.0",
-            "-i", str(output_path),
-            "-vframes", "1",
-            "-q:v", "2",
-            str(first_frame_out)
-        ]
-        proc_ff = await asyncio.create_subprocess_exec(
-            *cmd_ff,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
-        )
-        await proc_ff.wait()
+        try:
+            cmd_ff = [
+                "ffmpeg", "-y",
+                "-ss", "0.0",
+                "-i", str(output_path),
+                "-vframes", "1",
+                "-q:v", "2",
+                str(first_frame_out)
+            ]
+            proc_ff = await asyncio.create_subprocess_exec(
+                *cmd_ff,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL
+            )
+            await asyncio.wait_for(proc_ff.wait(), timeout=10.0)
+        except Exception:
+            try:
+                proc_ff.kill()
+            except Exception:
+                pass
 
         # Extract real last frame
-        last_sec = max(0.0, duration_sec - 0.1)
-        cmd_lf = [
-            "ffmpeg", "-y",
-            "-ss", str(last_sec),
-            "-i", str(output_path),
-            "-vframes", "1",
-            "-q:v", "2",
-            str(last_frame_out)
-        ]
-        proc_lf = await asyncio.create_subprocess_exec(
-            *cmd_lf,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
-        )
-        await proc_lf.wait()
+        try:
+            last_sec = max(0.0, duration_sec - 0.1)
+            cmd_lf = [
+                "ffmpeg", "-y",
+                "-ss", str(last_sec),
+                "-i", str(output_path),
+                "-vframes", "1",
+                "-q:v", "2",
+                str(last_frame_out)
+            ]
+            proc_lf = await asyncio.create_subprocess_exec(
+                *cmd_lf,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL
+            )
+            await asyncio.wait_for(proc_lf.wait(), timeout=10.0)
+        except Exception:
+            try:
+                proc_lf.kill()
+            except Exception:
+                pass
 
         return VideoGenerationResult(
             video_path=output_path,

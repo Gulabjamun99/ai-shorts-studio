@@ -139,11 +139,18 @@ class ScriptEngine:
                 items_clean = [it for it in items_clean if it and len(it) > 2 and it not in ["():", "()"]]
                 items_str = ", ".join(items_clean) if items_clean else ""
 
-                if re.search(r'(करें|करना|सीखें|बनाएं|हटाएं|चमकाएं)$', subject):
+                natural_subject = subject
+                natural_subject = re.sub(r'बनाएं$', 'बनाना', natural_subject)
+                natural_subject = re.sub(r'करें$', 'करना', natural_subject)
+                natural_subject = re.sub(r'सीखें$', 'सीखना', natural_subject)
+                natural_subject = re.sub(r'हटाएं$', 'हटाना', natural_subject)
+                natural_subject = re.sub(r'चमकाएं$', 'चमकाना', natural_subject)
+
+                if re.search(r'(करें|करना|सीखें|बनाएं|बनाना|हटाएं|हटाना|चमकाएं|चमकाना)$', subject):
                     if items_str:
-                        seg1_narration = f"क्या आप भी {subject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: {items_str}।"
+                        seg1_narration = f"क्या आप भी {natural_subject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: {items_str}।"
                     else:
-                        seg1_narration = f"क्या आप भी {subject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!"
+                        seg1_narration = f"क्या आप भी {natural_subject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!"
                 else:
                     if items_str:
                         seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: {items_str}।"
@@ -161,8 +168,9 @@ class ScriptEngine:
                 first_step_short = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', parsed["steps"][0], flags=re.I).strip()[:24]
                 seg2_text = f"स्टेप 1: {first_step_short} 🧽"
 
-                tip_str = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है"
-                seg3_narration = f"स्मार्ट टिप: {tip_str}। और अधिक जानकारी के लिए, {cta}!"
+                raw_tip = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है"
+                tip_clean = re.sub(r'[।.\s]+$', '', raw_tip).strip()
+                seg3_narration = f"स्मार्ट टिप: {tip_clean}। और अधिक जानकारी के लिए, {cta}!"
                 seg3_text = f"{cta[:30]} 📲"
 
             elif is_app or is_service:

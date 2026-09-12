@@ -278,10 +278,26 @@ export default function App() {
           />
         ) : (
           /* View 3: Creation Form */
-          <CreateProjectForm
-            onSubmit={handleCreateProject}
-            loading={creatingScript}
-          />
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {jobError && (
+              <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-4 text-red-300 text-xs flex items-center justify-between shadow-lg">
+                <span className="flex items-center gap-2">
+                  <span className="text-red-400 font-bold text-sm">⚠️</span>
+                  {jobError}
+                </span>
+                <button
+                  onClick={() => setJobError(null)}
+                  className="bg-red-500/20 hover:bg-red-500/30 px-3 py-1 rounded-lg text-white text-[11px] font-medium"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            <CreateProjectForm
+              onSubmit={handleCreateProject}
+              loading={creatingScript}
+            />
+          </div>
         )}
 
       </main>
