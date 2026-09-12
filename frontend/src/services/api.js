@@ -45,15 +45,15 @@ function parseStructuredConcept(concept) {
       stepSection = false;
       continue;
     }
-    if (/^(?:सामग्री|required\s*items|items|ingredients)[:\s-]/i.test(line)) {
-      const text = line.replace(/^(?:सामग्री|required\s*items|items|ingredients)[:\s-]*/i, '').trim();
-      if (text) items.push(text);
+    if (/^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients)/i.test(line)) {
+      const text = line.replace(/^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+/i, '').trim();
+      if (text && text.length > 2 && text !== '():' && text !== '()') items.push(text);
       itemSection = true;
       stepSection = false;
       tipSection = false;
       continue;
     }
-    if (/^(?:चरण|steps|instructions)[:\s-]/i.test(line)) {
+    if (/^(?:चरण|\(?\s*steps\s*\)?|instructions)/i.test(line)) {
       stepSection = true;
       itemSection = false;
       tipSection = false;
@@ -70,7 +70,10 @@ function parseStructuredConcept(concept) {
     }
 
     if (itemSection) {
-      items.push(line);
+      const cleanIt = line.replace(/^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+/i, '').trim();
+      if (cleanIt && cleanIt.length > 2 && cleanIt !== '():' && cleanIt !== '()') {
+        items.push(cleanIt);
+      }
     } else if (stepSection && steps.length > 0) {
       steps[steps.length - 1] += ' ' + line;
     } else if (tipSection && tips.length > 0) {
@@ -177,7 +180,8 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
   const parsed = parseStructuredConcept(concept);
   const cleanConcept = (concept || '').replace(/https?:\/\/\S+/g, '').trim();
   const sentences = cleanConcept.split(/[.!?।\n]+/).map(s => s.trim()).filter(s => s.length > 3);
-  const subject = title || parsed.header || sentences[0] || 'Smart Hack';
+  const firstLine = (cleanConcept.split('\n')[0] || '').replace(/[।.:!?]+$/, '').trim();
+  const subject = title || parsed.header || firstLine || 'Smart Hack';
   const cleanCta = parsed.cta || cta || 'Follow for more daily tips!';
   const hasSteps = parsed.steps.length >= 2;
 
@@ -195,30 +199,34 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
 
   if (language === 'Hindi') {
     if (hasSteps) {
-      const itemsClean = parsed.items.map(it => it.replace(/सामग्री|Required Items/gi, '').trim()).filter(Boolean);
+      const itemsClean = parsed.items.map(it => it.replace(/^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+/gi, '').trim()).filter(it => it && it.length > 2 && it !== '():' && it !== '()');
       const itemsStr = itemsClean.join(', ');
 
-      if (itemsStr) {
-        seg1Narration = `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: ${itemsStr}।`;
+      if (/(करें|करना|सीखें|बनाएं|हटाएं|चमकाएं)$/.test(subject)) {
+        seg1Narration = itemsStr
+          ? `क्या आप भी ${subject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: ${itemsStr}।`
+          : `क्या आप भी ${subject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!`;
       } else {
-        seg1Narration = `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!`;
+        seg1Narration = itemsStr
+          ? `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: ${itemsStr}।`
+          : `क्या आप भी ${subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं!`;
       }
       seg1Text = `${subject.slice(0, 28)}! ✨`;
-      seg1Desc = `Vertical 9:16 closeup. Introducing ${subject} and required preparation on clean surface.`;
+      seg1Desc = `Vertical 9:16 closeup. Introducing ${subject} and required items.`;
 
-      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
-        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim();
+      const stepParts = parsed.steps.slice(0, 4).map((st, i) => {
+        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').replace(/[।.]*$/, '').trim();
         return `स्टेप ${i + 1}: ${cleanSt}`;
       });
       seg2Narration = stepParts.join('। ') + '।';
       const firstStepShort = (parsed.steps[0] || '').replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim().slice(0, 24);
       seg2Text = `स्टेप 1: ${firstStepShort || 'शुरू करें'} 🎯`;
-      seg2Desc = `Vertical 9:16 closeup demonstration. Active execution of: ${firstStepShort}.`;
+      seg2Desc = `Vertical 9:16 closeup demonstration of: ${firstStepShort}.`;
 
-      const tipStr = parsed.tips[0] || 'यह आसान तरीका आपके काम को बेहद आसान और तेज बना देगा';
+      const tipStr = parsed.tips[0] || 'यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है';
       seg3Narration = `स्मार्ट टिप: ${tipStr}। और अधिक जानकारी के लिए, ${cleanCta}!`;
       seg3Text = `${cleanCta.slice(0, 28)} 📲`;
-      seg3Desc = `Vertical 9:16 payoff. Showing flawless final outcome with Call to Action badge.`;
+      seg3Desc = `Vertical 9:16 payoff. Flawless outcome with Call to Action badge.`;
 
     } else if (isApp) {
       seg1Narration = `क्या आप भी ${subject} के लिए एक भरोसेमंद और आसान समाधान ढूंढ रहे हैं?`;
@@ -698,25 +706,7 @@ function createBrowserVideoBlob(title, segments) {
 }
 
 export async function createProject(payload) {
-  // If backend is running, try calling it
-  try {
-    const res = await fetch(`${BASE_URL}/api/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (e) {
-    console.warn('Backend server not connected, generating via smart client engine:', e);
-  }
-
-  // Client-Side Smart Generation
-  const projectId = 'proj_' + Math.random().toString(36).substring(2, 9);
-  const versionId = 'ver_' + Math.random().toString(36).substring(2, 9);
-  const jobId = 'job_' + Math.random().toString(36).substring(2, 9);
-
+  // 1. Generate Smart Script (utilizing saved Gemini API key or robust dynamic NLP)
   const scriptApprovalData = await generateSmartScript({
     concept: payload.concept,
     title: payload.title,
@@ -725,6 +715,28 @@ export async function createProject(payload) {
     cta: payload.cta,
     apiKey: payload.apiKey
   });
+
+  const projectId = 'proj_' + Math.random().toString(36).substring(2, 9);
+  const versionId = 'ver_' + Math.random().toString(36).substring(2, 9);
+  const jobId = 'job_' + Math.random().toString(36).substring(2, 9);
+
+  // If backend is running, sync project but guarantee this accurate scriptApprovalData
+  try {
+    const res = await fetch(`${BASE_URL}/api/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      const backendData = await res.json();
+      if (backendData) {
+        backendData.script_approval_data = scriptApprovalData;
+        return backendData;
+      }
+    }
+  } catch (e) {
+    console.warn('Backend server sync note:', e);
+  }
 
   const db = getLocalDB();
   db.projects[projectId] = {

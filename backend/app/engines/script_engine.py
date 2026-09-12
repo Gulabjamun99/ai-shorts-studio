@@ -48,16 +48,16 @@ def parse_concept_structure(concept: str) -> Dict[str, Any]:
             step_section = False
             continue
 
-        if re.search(r'^(?:सामग्री|required\s*items|items|ingredients)[:\s-]', line, re.I):
-            item_text = re.sub(r'^(?:सामग्री|required\s*items|items|ingredients)[:\s-]*', '', line, flags=re.I).strip()
-            if item_text:
+        if re.search(r'^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients)', line, re.I):
+            item_text = re.sub(r'^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+', '', line, flags=re.I).strip()
+            if item_text and len(item_text) > 2 and item_text not in ["():", "()"]:
                 items.append(item_text)
             item_section = True
             step_section = False
             tip_section = False
             continue
 
-        if re.search(r'^(?:चरण|steps|instructions)[:\s-]', line, re.I):
+        if re.search(r'^(?:चरण|\(?\s*steps\s*\)?|instructions)', line, re.I):
             step_section = True
             item_section = False
             tip_section = False
@@ -73,7 +73,9 @@ def parse_concept_structure(concept: str) -> Dict[str, Any]:
             continue
 
         if item_section:
-            items.append(line)
+            clean_it = re.sub(r'^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+', '', line, flags=re.I).strip()
+            if clean_it and len(clean_it) > 2 and clean_it not in ["():", "()"]:
+                items.append(clean_it)
         elif step_section and len(steps) > 0:
             steps[-1] += " " + line
         elif tip_section and len(tips) > 0:
@@ -130,29 +132,36 @@ class ScriptEngine:
         is_app = bool(re.search(r'\b(app|application|download|install|play store|ios|android|features|gharmantra)\b', concept, re.I))
         is_service = bool(re.search(r'\b(service|company|interior|design|architect|booking|consult)\b', concept, re.I))
 
-        # Build meaningful 3-segment narrative
         # Build meaningful 3-segment narrative strictly matching user's actual concept
         if language == "Hindi":
             if has_steps:
-                items_clean = [it.replace("सामग्री", "").replace("Required Items", "").strip() for it in parsed["items"] if it.strip()]
+                items_clean = [re.sub(r'^(?:सामग्री|\(?\s*required\s*items\s*\)?|items|ingredients|[:\s\(\)-])+', '', it, flags=re.I).strip() for it in parsed["items"]]
+                items_clean = [it for it in items_clean if it and len(it) > 2 and it not in ["():", "()"]]
                 items_str = ", ".join(items_clean) if items_clean else ""
 
-                if items_str:
-                    seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: {items_str}।"
+                if re.search(r'(करें|करना|सीखें|बनाएं|हटाएं|चमकाएं)$', subject):
+                    if items_str:
+                        seg1_narration = f"क्या आप भी {subject} चाहते हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं! इसके लिए आपको चाहिए: {items_str}।"
+                    else:
+                        seg1_narration = f"क्या आप भी {subject} चाहते हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!"
                 else:
-                    seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान ट्रिक आपकी लाइफ को बहुत आसान बना देगी!"
+                    if items_str:
+                        seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? इसके लिए आपको चाहिए: {items_str}।"
+                    else:
+                        seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं!"
                 seg1_text = f"{subject[:30]}! ✨"
 
-                # Combine actual user steps in exact chronological order
+                # Combine actual user steps in exact chronological order (up to 4 steps)
                 step_parts = []
-                for idx, st in enumerate(parsed["steps"][:3], start=1):
+                for idx, st in enumerate(parsed["steps"][:4], start=1):
                     cleaned_st = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I).strip()
+                    cleaned_st = re.sub(r'[।.]+$', '', cleaned_st).strip()
                     step_parts.append(f"स्टेप {idx}: {cleaned_st}")
                 seg2_narration = "। ".join(step_parts) + "।"
                 first_step_short = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', parsed["steps"][0], flags=re.I).strip()[:24]
                 seg2_text = f"स्टेप 1: {first_step_short} 🧽"
 
-                tip_str = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका आपके काम को बेहद आसान और चमकदार बना देता है"
+                tip_str = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है"
                 seg3_narration = f"स्मार्ट टिप: {tip_str}। और अधिक जानकारी के लिए, {cta}!"
                 seg3_text = f"{cta[:30]} 📲"
 

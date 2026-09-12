@@ -60,22 +60,26 @@ class ConceptEngine:
         found_numbers = re.findall(r'\b\d+(?:\.\d+)?%?\b', concept)
         found_urls = re.findall(r'https?://\S+|www\.\S+', concept)
         
-        # Derive primary subject
-        subject_candidate = title if title else concept.split(".")[0]
-        main_subject = subject_candidate[:80].strip()
+        # Derive primary subject cleanly from title or first concept line
+        first_line = concept.strip().splitlines()[0] if concept.strip() else "Smart Hack"
+        subject_candidate = title.strip() if title and title.strip() else first_line
+        main_subject = re.sub(r'[।.:!?]+$', '', subject_candidate).strip()[:80]
 
-        # Extract required visuals based on keywords
-        words = set(re.findall(r'\b\w{4,}\b', concept.lower()))
+        # Extract required visuals dynamically based on concept words
+        concept_lower = concept.lower()
         visual_elements = []
         action_elements = []
 
-        if "clean" in words or "glass" in words or "spray" in words:
-            visual_elements.extend(["Glass surface", "Spray solution", "Cleaning cloth or newspaper"])
-            action_elements.extend(["Spray solution onto dirty surface", "Wipe smoothly with circular motion", "Reveal sparkling clean reflection"])
-        elif "food" in words or "cook" in words or "recipe" in words:
+        if "microwave" in concept_lower or "माइक्रोवेव" in concept:
+            visual_elements.extend(["Microwave interior with greasy stains", "Bowl with water and sliced lemon", "Steam softening grime", "Clean wiped surface"])
+            action_elements.extend(["Place lemon water bowl in microwave", "Heat on high to generate steam", "Wipe clean with cloth effortlessly"])
+        elif "शीशे" in concept or "खिड़की" in concept or "window" in concept_lower:
+            visual_elements.extend(["Window glass surface", "Cleaning solution spray bottle", "Wiping cloth"])
+            action_elements.extend(["Spray solution onto dirty glass", "Wipe smoothly in circular motion", "Reveal crystal clean reflection"])
+        elif "food" in concept_lower or "cook" in concept_lower or "recipe" in concept_lower or "खाना" in concept:
             visual_elements.extend(["Fresh ingredients", "Cooking pan or utensil", "Plated delicious dish"])
             action_elements.extend(["Display fresh ingredients", "Cook and stir with precision", "Serve hot with final garnish"])
-        elif "app" in words or "software" in words or "phone" in words:
+        elif "app" in concept_lower or "software" in concept_lower or "phone" in concept_lower or "डाउनलोड" in concept:
             visual_elements.extend(["Smartphone display", "App interface", "Satisfied user tapping screen"])
             action_elements.extend(["Show common user frustration", "Open app and complete task in seconds", "Show successful result"])
         else:
