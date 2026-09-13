@@ -59,14 +59,9 @@ class MockVideoProvider(BaseVideoProvider):
         color1 = "0x1a1a2e"
         color2 = "0x16213e"
         
-        # Build FFmpeg command to render a pristine 1080x1920 24fps test video
-        # We use testsrc2 or color gradients with drawtext
+        # Clean cinematic vertical background without developer debug overlays
         filter_str = (
-            f"testsrc2=size={width}x{height}:rate=24:duration={duration_sec},"
-            f"drawbox=y=0:color=black@0.5:width=iw:height=ih:t=fill,"
-            f"drawtext=text='AI SHORTS STUDIO':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=200,"
-            f"drawtext=text='Continuous Scene':fontcolor=0x4ECCA3:fontsize=36:x=(w-text_w)/2:y=280,"
-            f"drawtext=text='Duration\\: %{{pts\\:hms}}':fontcolor=white:fontsize=32:x=(w-text_w)/2:y=h-300"
+            f"color=c=0x0f172a:size={width}x{height}:rate=24:duration={duration_sec}"
         )
 
         cmd = [

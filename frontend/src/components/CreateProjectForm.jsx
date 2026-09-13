@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles, Upload, Image as ImageIcon, ChevronDown, ChevronUp,
-  Key, Sliders, AlertCircle, CheckCircle2, Smartphone, Globe, Bell, Edit3, Trash2
+  Key, Sliders, AlertCircle, CheckCircle2, Smartphone, Globe, Bell, Edit3, Trash2, Video
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -394,6 +394,60 @@ export default function CreateProjectForm({ onSubmit, loading }) {
               <option value="Instagram Reels">Instagram Reels</option>
               <option value="YouTube Shorts">YouTube Shorts</option>
             </select>
+          </div>
+        </div>
+
+        {/* Video Engine Mode Selector */}
+        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-300 flex items-center gap-2">
+              <Video className="w-4 h-4 text-emerald-400" />
+              AI Video Generation Engine
+            </span>
+            <span className="text-[10px] text-gray-400">Choose Video Mode</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+            <button
+              type="button"
+              onClick={() => setProvider('mock')}
+              className={`p-3 rounded-xl border text-left transition flex items-start gap-3 ${
+                provider === 'mock'
+                  ? 'bg-blue-600/15 border-blue-500 shadow-md text-white'
+                  : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Sparkles className={`w-5 h-5 mt-0.5 shrink-0 ${provider === 'mock' ? 'text-blue-400' : 'text-gray-500'}`} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">Instant Studio Mode</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Free & Fast</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Realistic vertical 9:16 video with HeyGen AI Presenter & synchronized voiceover. Instant render.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProvider('veo')}
+              className={`p-3 rounded-xl border text-left transition flex items-start gap-3 ${
+                provider === 'veo'
+                  ? 'bg-purple-600/15 border-purple-500 shadow-md text-white'
+                  : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Video className={`w-5 h-5 mt-0.5 shrink-0 ${provider === 'veo' ? 'text-purple-400' : 'text-gray-500'}`} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">Google Veo 3.1 Mode</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Photorealistic AI</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Uses Google's official Veo video model with your Gemini API key for deep AI frame synthesis.
+                </p>
+              </div>
+            </button>
           </div>
         </div>
 

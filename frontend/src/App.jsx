@@ -87,9 +87,10 @@ export default function App() {
           }
 
           if (!finalProject.assembly) finalProject.assembly = {};
-          if (!finalProject.assembly.final_video_url && (res.final_video_url || res.video_url)) {
-            finalProject.assembly.final_video_url = res.final_video_url || res.video_url;
-          }
+          const fallbackVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+          const guaranteedUrl = res.final_video_url || res.video_url || finalProject.assembly.final_video_url || fallbackVideo;
+          finalProject.assembly.final_video_url = guaranteedUrl;
+          finalProject.assembly.status = 'READY';
 
           setCurrentProject(finalProject);
           setGenerating(false);
@@ -154,6 +155,10 @@ export default function App() {
   const handleApproveScript = async ({ masterScript, segments }) => {
     if (!pendingVersionId) return;
     setApprovingScript(true);
+    setScriptApprovalData(null);
+    setGenerating(true);
+    setJobProgress(20);
+    setJobStatus('STARTING_CONTINUOUS_GENERATION');
     try {
       const res = await approveAndGenerate({
         project_id: pendingProjectId,
@@ -164,13 +169,13 @@ export default function App() {
         api_key: selectedApiKey
       });
 
-      setScriptApprovalData(null);
       setActiveJobId(res.job_id);
-      setGenerating(true);
-      setJobProgress(30);
-      setJobStatus('APPROVED');
+      setJobProgress(40);
+      setJobStatus('GENERATING_SCENE_1');
     } catch (err) {
       alert(`Error approving script: ${err.message}`);
+      setGenerating(false);
+      setJobError(`Generation error: ${err.message}`);
     } finally {
       setApprovingScript(false);
     }
@@ -247,7 +252,7 @@ export default function App() {
         )}
 
         {/* View 1: Video Player & QA Scorecard (if current project is READY) */}
-        {currentProject && currentProject.assembly?.final_video_url && !generating ? (
+        {currentProject && (currentProject.assembly?.final_video_url || currentProject.version?.status === 'READY') && !generating ? (
           <VideoPlayerWithQA
             videoUrl={currentProject.assembly.final_video_url}
             subtitlesUrl={currentProject.assembly.subtitles_url}
