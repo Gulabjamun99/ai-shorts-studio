@@ -107,9 +107,11 @@ Analyze this user concept and topic, and write a coherent, natural, engaging 20-
 
 CRITICAL INSTRUCTIONS:
 - Base the entire script STRICTLY on the user's provided topic and concept.
-- DO NOT mention vinegar, newspapers, or unrelated household items unless they are explicitly written in the user's concept!
-- If the concept includes chronological steps (1, 2, 3...), preserve them faithfully in Segment 2.
-- If the concept includes required items or ingredients, introduce them in Segment 1 with a hook.
+- ABSOLUTELY DO NOT SAY "Step 1", "Step 2", "स्टेप 1", "स्टेप 2", "चरण 1", "चरण 2", or "पायरी 1" in the spoken narration!
+- Write a smooth, continuous conversational storytelling voiceover like a top real creator on Instagram Reels or HeyGen (e.g. use natural transitions like 'सबसे पहले...', 'अब...', 'इसके बाद...', 'फिर बस...').
+- Weave the actions together naturally so it sounds like an authentic human speaking directly to the camera, NOT a robotic numbered list.
+- Keep on-screen text short, punchy (2-4 words with an emoji), highlighting visual cues (e.g. 'नींबू और पानी ट्रिक! 🍋', '4-5 मिनट भाप ⚡', 'चमकाएं मिनटों में! ✨').
+- DO NOT mention vinegar, newspapers, or unrelated items unless explicitly provided in the concept!
 - Segment 3 must deliver the payoff, pro tip, and conclude with the user's Call to Action.
 
 User Title/Topic: ${title || 'Smart Hack'}
@@ -221,14 +223,19 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
       seg1Text = `${subject.slice(0, 28)}! ✨`;
       seg1Desc = `Vertical 9:16 closeup. Introducing ${subject} and required items.`;
 
-      const stepParts = parsed.steps.slice(0, 4).map((st, i) => {
-        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').replace(/[।.]*$/, '').trim();
-        return `स्टेप ${i + 1}: ${cleanSt}`;
+      const cleanedSteps = parsed.steps.slice(0, 4).map(st => {
+        let s = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').replace(/[।.]*$/, '').trim();
+        return s;
+      });
+      const transitionsHindi = ['सबसे पहले, ', 'अब ', 'इसके बाद, ', 'फिर सावधानी से '];
+      const stepParts = cleanedSteps.map((st, i) => {
+        const prefix = transitionsHindi[i] || 'फिर ';
+        const cleanSt = st.replace(/^(?:सावधानी से\s*)/, '');
+        return `${prefix}${cleanSt}`;
       });
       seg2Narration = stepParts.join('। ') + '।';
-      const firstStepShort = (parsed.steps[0] || '').replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim().slice(0, 24);
-      seg2Text = `स्टेप 1: ${firstStepShort || 'शुरू करें'} 🎯`;
-      seg2Desc = `Vertical 9:16 closeup demonstration of: ${firstStepShort}.`;
+      seg2Text = 'आसान और असरदार तरीका! 🧽';
+      seg2Desc = 'Vertical 9:16 closeup. Real person actively demonstrating smooth technique.';
 
       const rawTip = parsed.tips[0] || 'यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है';
       const tipClean = rawTip.replace(/[।.\s]+$/, '');
@@ -278,13 +285,14 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
       seg1Text = `${subject.slice(0, 28)}! ✨`;
       seg1Desc = `Vertical 9:16 closeup introducing ${subject}.`;
 
-      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
-        const cleanSt = st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*/i, '').trim();
-        return `पायरी ${i + 1}: ${cleanSt}`;
-      });
+      const cleanedStepsMr = parsed.steps.slice(0, 4).map(st => 
+        st.replace(/^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?|पायरी\s*\d+[:.-]?)\s*/i, '').replace(/[।.]*$/, '').trim()
+      );
+      const transitionsMr = ['सुरुवातीला, ', 'आता ', 'त्यानंतर, ', 'शेवटी काळजीपूर्वक '];
+      const stepParts = cleanedStepsMr.map((st, i) => `${transitionsMr[i] || 'नंतर '}${st}`);
       seg2Narration = stepParts.join('। ') + '।';
-      seg2Text = 'सोप्या स्टेप्स फॉलो करा 🧽';
-      seg2Desc = 'Vertical 9:16 closeup of demonstration in action.';
+      seg2Text = 'सोपा आणि जादुई उपाय! 🧽';
+      seg2Desc = 'Vertical 9:16 closeup. Real person actively demonstrating smooth technique.';
 
       const tipStr = parsed.tips[0] || 'हा उपाय तुमचे काम अतिशय सोपे आणि जलद करेल';
       seg3Narration = `स्मार्ट टिप: ${tipStr}. अधिक माहितीसाठी, ${cleanCta}!`;
@@ -320,13 +328,14 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
       seg1Text = `${subject.slice(0, 28)} ✨`;
       seg1Desc = `Vertical 9:16 closeup introducing ${subject}.`;
 
-      const stepParts = parsed.steps.slice(0, 3).map((st, i) => {
-        const cleanSt = st.replace(/^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*/i, '').trim();
-        return `Step ${i + 1}: ${cleanSt}`;
-      });
+      const cleanedStepsEn = parsed.steps.slice(0, 4).map(st => 
+        st.replace(/^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*/i, '').replace(/[.]*$/, '').trim()
+      );
+      const transitionsEn = ['To begin, ', 'Next, ', 'After that, ', 'Finally, carefully '];
+      const stepParts = cleanedStepsEn.map((st, i) => `${transitionsEn[i] || 'Then, '}${st}`);
       seg2Narration = stepParts.join('. ') + '.';
-      seg2Text = 'Follow the Steps 🧽';
-      seg2Desc = 'Vertical 9:16 demonstration of steps.';
+      seg2Text = 'Simple & Flawless Action! ✨';
+      seg2Desc = 'Vertical 9:16. Real person demonstrating step-by-step technique.';
 
       const tip = parsed.tips[0] || 'This method saves time and delivers flawless results every single time';
       seg3Narration = `Pro Tip: ${tip}. For more details, ${cleanCta}!`;

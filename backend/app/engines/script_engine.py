@@ -158,15 +158,18 @@ class ScriptEngine:
                         seg1_narration = f"क्या आप भी {subject} का सबसे आसान और असरदार तरीका ढूंढ रहे हैं? यह आसान घरेलू ट्रिक जरूर आजमाएं!"
                 seg1_text = f"{subject[:30]}! ✨"
 
-                # Combine actual user steps in exact chronological order (up to 4 steps)
-                step_parts = []
-                for idx, st in enumerate(parsed["steps"][:4], start=1):
-                    cleaned_st = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I).strip()
-                    cleaned_st = re.sub(r'[।.]+$', '', cleaned_st).strip()
-                    step_parts.append(f"स्टेप {idx}: {cleaned_st}")
+                # Combine actual user steps into a natural storytelling conversational flow (NO robotic "स्टेप 1", "स्टेप 2")
+                cleaned_steps = [
+                    re.sub(r'[।.]+$', '', re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I)).strip()
+                    for st in parsed["steps"][:4]
+                ]
+                transitions_hi = ["सबसे पहले, ", "अब ", "इसके बाद, ", "फिर सावधानी से "]
+                step_parts = [
+                    f"{transitions_hi[i] if i < len(transitions_hi) else 'फिर '}{st}"
+                    for i, st in enumerate(cleaned_steps)
+                ]
                 seg2_narration = "। ".join(step_parts) + "।"
-                first_step_short = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', parsed["steps"][0], flags=re.I).strip()[:24]
-                seg2_text = f"स्टेप 1: {first_step_short} 🧽"
+                seg2_text = "आसान और असरदार तरीका! 🧽"
 
                 raw_tip = parsed["tips"][0] if parsed["tips"] else "यह आसान तरीका बिना किसी मेहनत के तुरंत बेहतरीन असर दिखाता है"
                 tip_clean = re.sub(r'[।.\s]+$', '', raw_tip).strip()
@@ -205,12 +208,17 @@ class ScriptEngine:
                     seg1_narration = f"{subject} चा सर्वात सोपा आणि परिणामकारक उपाय नक्की वापरून पहा!"
                 seg1_text = f"{subject[:30]}! ✨"
 
-                step_parts = []
-                for idx, st in enumerate(parsed["steps"][:3], start=1):
-                    cleaned_st = re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?)\s*', '', st, flags=re.I).strip()
-                    step_parts.append(f"पायरी {idx}: {cleaned_st}")
+                cleaned_steps_mr = [
+                    re.sub(r'[।.]+$', '', re.sub(r'^(?:चरण\s*\d+[:.-]?|\d+[.)]\s*|step\s*\d+[:.-]?|पायरी\s*\d+[:.-]?)\s*', '', st, flags=re.I)).strip()
+                    for st in parsed["steps"][:4]
+                ]
+                transitions_mr = ["सुरुवातीला, ", "आता ", "त्यानंतर, ", "शेवटी काळजीपूर्वक "]
+                step_parts = [
+                    f"{transitions_mr[i] if i < len(transitions_mr) else 'नंतर '}{st}"
+                    for i, st in enumerate(cleaned_steps_mr)
+                ]
                 seg2_narration = "। ".join(step_parts) + "।"
-                seg2_text = "सोप्या स्टेप्स फॉलो करा 🧽"
+                seg2_text = "सोपा आणि जादुई उपाय! 🧽"
 
                 tip_str = parsed["tips"][0] if parsed["tips"] else "हा उपाय तुमचे काम अतिशय सोपे आणि जलद करेल"
                 seg3_narration = f"स्मार्ट टिप: {tip_str}. अधिक माहितीसाठी, {cta}!"
@@ -247,12 +255,17 @@ class ScriptEngine:
                     seg1_narration = f"Looking for the easiest and most effective way to do {subject}? This genius trick will save your day!"
                 seg1_text = f"{subject[:30]} ✨"
 
-                step_parts = []
-                for idx, st in enumerate(parsed["steps"][:3], start=1):
-                    cleaned_st = re.sub(r'^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*', '', st, flags=re.I).strip()
-                    step_parts.append(f"Step {idx}: {cleaned_st}")
+                cleaned_steps_en = [
+                    re.sub(r'[.]+$', '', re.sub(r'^(?:step\s*\d+[:.-]?|\d+[.)]\s*)\s*', '', st, flags=re.I)).strip()
+                    for st in parsed["steps"][:4]
+                ]
+                transitions_en = ["To begin, ", "Next, ", "After that, ", "Finally, carefully "]
+                step_parts = [
+                    f"{transitions_en[i] if i < len(transitions_en) else 'Then, '}{st}"
+                    for i, st in enumerate(cleaned_steps_en)
+                ]
                 seg2_narration = ". ".join(step_parts) + "."
-                seg2_text = f"Follow the Steps 🧽"
+                seg2_text = "Simple & Flawless Action! ✨"
 
                 tip_str = parsed["tips"][0] if parsed["tips"] else "This method saves time and delivers flawless results every single time"
                 seg3_narration = f"Pro Tip: {tip_str}. For more details, {cta}!"

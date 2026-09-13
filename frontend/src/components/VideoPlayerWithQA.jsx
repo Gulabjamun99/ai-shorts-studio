@@ -21,30 +21,40 @@ export default function VideoPlayerWithQA({
   const [downloading, setDownloading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speaking, setSpeaking] = useState(false);
+  const [voiceSync, setVoiceSync] = useState(true);
   const videoRef = useRef(null);
 
-  const toggleSpeech = () => {
+  const startVoice = () => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    if (speaking) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
+    window.speechSynthesis.cancel();
+    const text = metadata.narration || metadata.title || '';
+    if (!text) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (metadata.language === 'Hindi') {
+      utterance.lang = 'hi-IN';
+    } else if (metadata.language === 'Marathi') {
+      utterance.lang = 'mr-IN';
     } else {
-      const text = metadata.narration || metadata.title || '';
-      if (!text) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      if (metadata.language === 'Hindi') {
-        utterance.lang = 'hi-IN';
-      } else if (metadata.language === 'Marathi') {
-        utterance.lang = 'mr-IN';
-      } else {
-        utterance.lang = 'en-US';
-      }
-      utterance.rate = 1.05;
-      utterance.onend = () => setSpeaking(false);
-      utterance.onerror = () => setSpeaking(false);
-      window.speechSynthesis.speak(utterance);
-      setSpeaking(true);
+      utterance.lang = 'en-US';
+    }
+    utterance.rate = 1.02;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+
+  const stopVoice = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+  };
+
+  const toggleSpeech = () => {
+    if (speaking) {
+      stopVoice();
+    } else {
+      startVoice();
     }
   };
 
@@ -53,9 +63,11 @@ export default function VideoPlayerWithQA({
     if (videoRef.current.paused) {
       videoRef.current.play();
       setIsPlaying(true);
+      if (voiceSync) startVoice();
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
+      stopVoice();
     }
   };
 
@@ -194,8 +206,14 @@ export default function VideoPlayerWithQA({
                   autoPlay
                   loop
                   playsInline
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onPlay={() => {
+                    setIsPlaying(true);
+                    if (voiceSync) startVoice();
+                  }}
+                  onPause={() => {
+                    setIsPlaying(false);
+                    stopVoice();
+                  }}
                   className="w-full h-full object-cover cursor-pointer"
                   src={videoUrl}
                   onClick={togglePlay}
@@ -204,6 +222,38 @@ export default function VideoPlayerWithQA({
                     <track default kind="subtitles" src={subtitlesUrl} srcLang="en" label="English" />
                   )}
                 </video>
+
+                {/* HeyGen Realistic AI Presenter Badge Overlay */}
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-black/75 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/20 shadow-xl pointer-events-none">
+                  <div className="relative">
+                    <img
+                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80"
+                      alt="AI Presenter"
+                      className="w-7 h-7 rounded-full object-cover border-2 border-emerald-400 shadow-sm"
+                    />
+                    {speaking && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-black rounded-full animate-ping" />
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] font-bold text-white leading-tight">HeyGen Presenter</span>
+                    <span className="text-[8px] text-emerald-400 font-semibold tracking-wide">
+                      {speaking ? '🎙️ Speaking Sync' : 'AI Voice Ready'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Audio Waves Indicator */}
+                {speaking && (
+                  <div className="absolute bottom-20 left-4 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                    <span className="w-1.5 h-4 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="w-1.5 h-6 bg-emerald-400 rounded-full animate-pulse delay-75" />
+                    <span className="w-1.5 h-3 bg-emerald-400 rounded-full animate-pulse delay-150" />
+                    <span className="w-1.5 h-5 bg-emerald-400 rounded-full animate-pulse delay-100" />
+                    <span className="text-[9px] text-white font-medium ml-1">Voice Matched</span>
+                  </div>
+                )}
+
                 <button
                   onClick={togglePlay}
                   className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"
@@ -219,9 +269,26 @@ export default function VideoPlayerWithQA({
             )}
           </div>
 
-          <p className="text-[11px] text-gray-500 mt-2">
-            Click video to play / pause • 9:16 Portrait
-          </p>
+          <div className="flex items-center justify-between w-full max-w-[320px] mt-2.5 px-1">
+            <span className="text-[11px] text-gray-500">
+              Click video to play / pause
+            </span>
+            <button
+              onClick={() => {
+                const next = !voiceSync;
+                setVoiceSync(next);
+                if (!next) stopVoice();
+                else if (isPlaying) startVoice();
+              }}
+              className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold transition ${
+                voiceSync
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : 'bg-gray-800 text-gray-400 border-gray-700'
+              }`}
+            >
+              {voiceSync ? '✓ Voiceover Sync: ON' : '✕ Voiceover: OFF'}
+            </button>
+          </div>
         </div>
 
         {/* Right: Actions, QA Breakdown & Edit Loop */}
