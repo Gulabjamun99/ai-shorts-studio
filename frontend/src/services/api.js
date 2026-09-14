@@ -95,24 +95,27 @@ function parseStructuredConcept(concept) {
 /**
  * Intelligent Script Generation via Gemini API or Dynamic NLP Intent Structuring.
  */
-async function generateSmartScript({ concept, title, language, style, cta, apiKey }) {
+async function generateSmartScript({ concept, title, language, style, cta, apiKey, targetDuration = 48.0 }) {
   // Check for passed apiKey or saved key in browser storage
   const effectiveApiKey = apiKey?.trim() || (typeof localStorage !== 'undefined' ? (localStorage.getItem('ai_shorts_studio_gemini_key') || '').trim() : '');
+
+  const isLongTutorial = (targetDuration || 48.0) >= 40.0;
+  const numSegments = isLongTutorial ? 4 : 3;
+  const durationTarget = isLongTutorial ? '45-50 second in-depth Google Vids style tutorial divided into 4 connected scenes' : '20-25 second snappy video script divided into 3 connected scenes';
 
   // 1. Google Gemini AI Generation (When API Key is available)
   if (effectiveApiKey && effectiveApiKey.startsWith('AIza')) {
     try {
-      const prompt = `You are a world-class viral short-form video scriptwriter for Instagram Reels and YouTube Shorts.
-Analyze this user concept and topic, and write a coherent, natural, engaging 20-23 second video script divided into exactly 3 connected segments.
+      const prompt = `You are a world-class viral video scriptwriter for Instagram Reels and YouTube Shorts.
+Analyze this user concept and topic, and write a coherent, natural, engaging ${durationTarget}.
 
 CRITICAL INSTRUCTIONS:
 - Base the entire script STRICTLY on the user's provided topic and concept.
 - ABSOLUTELY DO NOT SAY "Step 1", "Step 2", "स्टेप 1", "स्टेप 2", "चरण 1", "चरण 2", or "पायरी 1" in the spoken narration!
-- Write a smooth, continuous conversational storytelling voiceover like a top real creator on Instagram Reels or HeyGen (e.g. use natural transitions like 'सबसे पहले...', 'अब...', 'इसके बाद...', 'फिर बस...').
+- Write a smooth, continuous conversational storytelling voiceover like a top real creator on Instagram Reels or Google Vids (e.g. use natural transitions like 'सबसे पहले...', 'अब...', 'इसके बाद...', 'फिर बस...').
 - Weave the actions together naturally so it sounds like an authentic human speaking directly to the camera, NOT a robotic numbered list.
-- Keep on-screen text short, punchy (2-4 words with an emoji), highlighting visual cues (e.g. 'नींबू और पानी ट्रिक! 🍋', '4-5 मिनट भाप ⚡', 'चमकाएं मिनटों में! ✨').
-- DO NOT mention vinegar, newspapers, or unrelated items unless explicitly provided in the concept!
-- Segment 3 must deliver the payoff, pro tip, and conclude with the user's Call to Action.
+- Keep on-screen text short, punchy (2-4 words with an emoji), highlighting visual cues.
+- The final segment must deliver the payoff, pro tip, and conclude with the user's Call to Action.
 
 User Title/Topic: ${title || 'Smart Hack'}
 User Concept:
@@ -122,14 +125,14 @@ Call to Action (CTA): ${cta || 'Follow for more daily tips!'}
 Language: ${language} (write natively in ${language}, with natural fluent conversational phrasing)
 Video Style: ${style}
 
-Output ONLY valid JSON in this exact structure, with no markdown backticks:
+Output ONLY valid JSON in this exact structure with ${numSegments} segments, with no markdown backticks:
 {
   "master_script": "full combined narration",
-  "estimated_duration": 21.5,
+  "estimated_duration": ${isLongTutorial ? 48.0 : 21.5},
   "segments": [
     {
       "segment_index": 1,
-      "duration_sec": 7.0,
+      "duration_sec": ${isLongTutorial ? 11.0 : 7.0},
       "narration": "...",
       "visual_description": "...",
       "on_screen_text": "..."
@@ -165,7 +168,7 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
             const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleanJson);
-            if (parsed.master_script && parsed.segments?.length === 3) {
+            if (parsed.master_script && parsed.segments?.length >= 3) {
               return parsed;
             }
           }
@@ -372,6 +375,52 @@ Output ONLY valid JSON in this exact structure, with no markdown backticks:
     }
   }
 
+  if (isLongTutorial) {
+    const seg4Narration = language === 'Hindi'
+      ? `अगर यह आसान और असरदार तरीका आपको पसंद आया, तो ${cleanCta}!`
+      : language === 'Marathi'
+      ? `अशाच उपयुक्त टिप्ससाठी, ${cleanCta}!`
+      : `If you found this helpful, ${cleanCta}!`;
+    const seg4Text = `${cleanCta.slice(0, 26)} 📲`;
+    const seg4Desc = `Vertical 9:16 payoff. Sparkling clean outcome and final call to action.`;
+
+    return {
+      master_script: `${seg1Narration} ${seg2Narration} ${seg3Narration} ${seg4Narration}`,
+      language: language,
+      estimated_duration: 48.0,
+      segments: [
+        {
+          segment_index: 1,
+          duration_sec: 11.0,
+          narration: seg1Narration,
+          visual_description: seg1Desc,
+          on_screen_text: seg1Text
+        },
+        {
+          segment_index: 2,
+          duration_sec: 13.0,
+          narration: seg2Narration,
+          visual_description: seg2Desc,
+          on_screen_text: seg2Text
+        },
+        {
+          segment_index: 3,
+          duration_sec: 14.0,
+          narration: seg3Narration,
+          visual_description: seg3Desc,
+          on_screen_text: language === 'Hindi' ? 'स्मार्ट टिप! ✨' : 'Smart Tip! ✨'
+        },
+        {
+          segment_index: 4,
+          duration_sec: 10.0,
+          narration: seg4Narration,
+          visual_description: seg4Desc,
+          on_screen_text: seg4Text
+        }
+      ]
+    };
+  }
+
   return {
     master_script: `${seg1Narration} ${seg2Narration} ${seg3Narration}`,
     language: language,
@@ -444,6 +493,31 @@ function getThemeImages(title, segments) {
     return THEME_IMAGES.app;
   }
   return THEME_IMAGES.default;
+}
+
+export const ACTION_VIDEO_URLS = {
+  cleaning_stove: 'https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-cooktop-with-a-sponge-42871-large.mp4',
+  cleaning_glass: 'https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-mirror-with-a-cloth-42867-large.mp4',
+  cooking: 'https://assets.mixkit.co/videos/preview/mixkit-cooking-fresh-ingredients-in-a-pan-43093-large.mp4',
+  app: 'https://assets.mixkit.co/videos/preview/mixkit-browsing-apps-on-a-modern-smartphone-42999-large.mp4',
+  default: 'https://assets.mixkit.co/videos/preview/mixkit-hands-organizing-and-cleaning-a-modern-room-42872-large.mp4'
+};
+
+export function getThemeActionVideo(title, segments) {
+  const text = (title + ' ' + (segments || []).map(s => (s.narration || '') + ' ' + (s.on_screen_text || '')).join(' ')).toLowerCase();
+  if (/(चूल्हा|चिकनाई|गैस|stove|burner|cooktop|knife|मैल|grime)/i.test(text)) {
+    return ACTION_VIDEO_URLS.cleaning_stove;
+  }
+  if (/(सिरका|अखबार|शीशे|दाग|खिड़की|clean|wash|spray|window|glass|stain)/i.test(text)) {
+    return ACTION_VIDEO_URLS.cleaning_glass;
+  }
+  if (/(food|cook|recipe|kitchen|dish|दूध|पनीर|छेना|स्वादिष्ट|खाना|रेसिपी)/i.test(text)) {
+    return ACTION_VIDEO_URLS.cooking;
+  }
+  if (/(app|download|phone|mobile|service|ऐप|डाउनलोड|gharmantra)/i.test(text)) {
+    return ACTION_VIDEO_URLS.app;
+  }
+  return ACTION_VIDEO_URLS.default;
 }
 
 /**
@@ -646,7 +720,8 @@ export async function createProject(payload) {
     language: payload.language,
     style: payload.style,
     cta: payload.cta,
-    apiKey: payload.apiKey
+    apiKey: payload.apiKey,
+    targetDuration: payload.target_duration || 48.0
   });
 
   const projectId = 'proj_' + Math.random().toString(36).substring(2, 9);
@@ -809,8 +884,10 @@ export async function approveAndGenerate(payload) {
     }
   }
 
-  // Pre-generate real browser video blob with segments (zero lag, 100% playable 9:16 video)
-  const videoBlobUrl = await createBrowserVideoBlob(targetTitle, targetSegments);
+  // Match real action video footage based on topic (Google Vids style)
+  const matchedRealVideo = getThemeActionVideo(targetTitle, targetSegments);
+  const videoBlobUrl = await createBrowserVideoBlob(targetTitle, targetSegments).catch(() => matchedRealVideo);
+  const finalPlayableUrl = matchedRealVideo || videoBlobUrl;
 
   db.jobs[jobId] = {
     job_id: jobId,
@@ -819,15 +896,16 @@ export async function approveAndGenerate(payload) {
     current_state: 'GENERATING_SEGMENT_1',
     progress_pct: 35,
     created_at: Date.now(),
-    video_url: videoBlobUrl
+    video_url: finalPlayableUrl
   };
 
   if (db.projects[targetProjectId]) {
+    const totalD = targetSegments.reduce((a, s) => a + (s.duration_sec || 10), 0) || 48.0;
     db.projects[targetProjectId].assembly = {
-      final_video_url: videoBlobUrl,
+      final_video_url: finalPlayableUrl,
       subtitles_url: null,
       resolution: '1080x1920',
-      duration_sec: 21.8,
+      duration_sec: totalD,
       status: 'APPROVED'
     };
   }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles, Upload, Image as ImageIcon, ChevronDown, ChevronUp,
-  Key, Sliders, AlertCircle, CheckCircle2, Smartphone, Globe, Bell, Edit3, Trash2, Video
+  Key, Sliders, AlertCircle, CheckCircle2, Smartphone, Globe, Bell, Edit3, Trash2, Video, Clock
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -23,6 +23,7 @@ export default function CreateProjectForm({ onSubmit, loading }) {
   const [voiceGender, setVoiceGender] = useState('Female');
   const [voiceTone, setVoiceTone] = useState('Friendly');
   const [provider, setProvider] = useState('mock');
+  const [targetDuration, setTargetDuration] = useState(48.0);
   
   // Persistent Gemini API Key
   const [apiKey, setApiKey] = useState('');
@@ -139,6 +140,7 @@ export default function CreateProjectForm({ onSubmit, loading }) {
       voice_tone: voiceTone,
       cta: finalCta,
       provider,
+      target_duration: targetDuration,
       apiKey: apiKey.trim(),
       assets: uploadedFiles
     });
@@ -150,10 +152,10 @@ export default function CreateProjectForm({ onSubmit, loading }) {
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-blue-500" />
-            Create AI Short / Reel (20–23s)
+            Create AI Short / Reel (Up to 50s)
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Topic ya concept enter karein. Engine 100% aapke concept se matched 3-segment narrative generate karega.
+            Google Vids Style Engine: Real HD action video clips + studio Hindi voiceover.
           </p>
         </div>
 
@@ -447,6 +449,66 @@ export default function CreateProjectForm({ onSubmit, loading }) {
                   Uses Google's official Veo video model with your Gemini API key for deep AI frame synthesis.
                 </p>
               </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Target Video Duration Selector (Up to 50s) */}
+        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-300 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-cyan-400" />
+              Target Reel Duration
+            </span>
+            <span className="text-[10px] text-cyan-400 font-bold">Google Vids Style: 45–50s Recommended</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+            <button
+              type="button"
+              onClick={() => setTargetDuration(48.0)}
+              className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                targetDuration >= 40
+                  ? 'bg-cyan-600/15 border-cyan-500 text-white shadow-md'
+                  : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold block text-white">45–50 Seconds</span>
+                <span className="text-[10px] text-gray-400">In-Depth Action (Recommended)</span>
+              </div>
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-bold">50s</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTargetDuration(32.0)}
+              className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                targetDuration >= 28 && targetDuration < 40
+                  ? 'bg-blue-600/15 border-blue-500 text-white shadow-md'
+                  : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold block text-white">30–35 Seconds</span>
+                <span className="text-[10px] text-gray-400">Standard Short / Reel</span>
+              </div>
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded font-bold">30s</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTargetDuration(22.0)}
+              className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                targetDuration < 28
+                  ? 'bg-purple-600/15 border-purple-500 text-white shadow-md'
+                  : 'bg-gray-950/60 border-gray-800 text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold block text-white">20–25 Seconds</span>
+                <span className="text-[10px] text-gray-400">Quick Hack</span>
+              </div>
+              <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-bold">20s</span>
             </button>
           </div>
         </div>

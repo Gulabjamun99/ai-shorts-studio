@@ -292,40 +292,83 @@ class ScriptEngine:
                 seg3_narration = f"Look at that crystal clear result! Never struggle again. {cta}"
                 seg3_text = f"Flawless Result! {cta[:25]}"
 
-        d1 = max(6.5, min(8.0, cls.estimate_duration(seg1_narration, language)))
-        d2 = max(6.5, min(8.0, cls.estimate_duration(seg2_narration, language)))
-        d3 = max(6.5, min(8.0, cls.estimate_duration(seg3_narration, language)))
-        total_d = round(d1 + d2 + d3, 1)
+        if target_duration >= 40.0:
+            # In-depth 45-50s Google Vids style tutorial with 4 rich scenes
+            seg4_narration = f"अगर यह आसान और असरदार तरीका आपको पसंद आया, तो {cta}!" if language == "Hindi" else f"अशाच उपयुक्त टिप्ससाठी, {cta}!" if language == "Marathi" else f"If you found this helpful, {cta}!"
+            seg4_text = f"{cta[:30]} 📲"
+            v4_desc = f"Vertical 9:16 payoff. Sparkling clean outcome and final call to action."
 
-        v1_desc = f"Vertical 9:16 portrait. High-energy opening hook showcasing {subject} in dynamic close-up."
-        v2_desc = f"Vertical 9:16 portrait. Smooth motion demonstration showcasing active solution and clear details."
-        v3_desc = f"Vertical 9:16 portrait. High-impact resolution showing final outcome with clear call-to-action text."
+            d1 = max(9.0, min(12.0, cls.estimate_duration(seg1_narration, language) * 1.3))
+            d2 = max(10.0, min(14.0, cls.estimate_duration(seg2_narration, language) * 0.9))
+            d3 = max(11.0, min(15.0, cls.estimate_duration(seg3_narration, language) * 1.1))
+            d4 = max(9.0, min(11.0, cls.estimate_duration(seg4_narration, language) * 1.2))
+            total_d = round(d1 + d2 + d3 + d4, 1)
 
-        segments = [
-            SegmentApprovalItem(
-                segment_index=1,
-                duration_sec=d1,
-                narration=seg1_narration,
-                visual_description=v1_desc,
-                on_screen_text=seg1_text
-            ),
-            SegmentApprovalItem(
-                segment_index=2,
-                duration_sec=d2,
-                narration=seg2_narration,
-                visual_description=v2_desc,
-                on_screen_text=seg2_text
-            ),
-            SegmentApprovalItem(
-                segment_index=3,
-                duration_sec=d3,
-                narration=seg3_narration,
-                visual_description=v3_desc,
-                on_screen_text=seg3_text
-            ),
-        ]
+            segments = [
+                SegmentApprovalItem(
+                    segment_index=1,
+                    duration_sec=d1,
+                    narration=seg1_narration,
+                    visual_description=f"Vertical 9:16 portrait. Introducing {subject} problem and required items.",
+                    on_screen_text=seg1_text
+                ),
+                SegmentApprovalItem(
+                    segment_index=2,
+                    duration_sec=d2,
+                    narration=seg2_narration,
+                    visual_description=f"Vertical 9:16 closeup. Real hands performing detailed technique for {subject}.",
+                    on_screen_text=seg2_text
+                ),
+                SegmentApprovalItem(
+                    segment_index=3,
+                    duration_sec=d3,
+                    narration=seg3_narration,
+                    visual_description=f"Vertical 9:16 action. Surface transformation and thorough cleaning details.",
+                    on_screen_text=f"स्मार्ट टिप! ✨" if language == "Hindi" else "Smart Tip! ✨"
+                ),
+                SegmentApprovalItem(
+                    segment_index=4,
+                    duration_sec=d4,
+                    narration=seg4_narration,
+                    visual_description=v4_desc,
+                    on_screen_text=seg4_text
+                ),
+            ]
+            master_script = f"{seg1_narration} {seg2_narration} {seg3_narration} {seg4_narration}"
+        else:
+            d1 = max(6.5, min(8.0, cls.estimate_duration(seg1_narration, language)))
+            d2 = max(6.5, min(8.0, cls.estimate_duration(seg2_narration, language)))
+            d3 = max(6.5, min(8.0, cls.estimate_duration(seg3_narration, language)))
+            total_d = round(d1 + d2 + d3, 1)
 
-        master_script = f"{seg1_narration} {seg2_narration} {seg3_narration}"
+            v1_desc = f"Vertical 9:16 portrait. High-energy opening hook showcasing {subject} in dynamic close-up."
+            v2_desc = f"Vertical 9:16 portrait. Smooth motion demonstration showcasing active solution and clear details."
+            v3_desc = f"Vertical 9:16 portrait. High-impact resolution showing final outcome with clear call-to-action text."
+
+            segments = [
+                SegmentApprovalItem(
+                    segment_index=1,
+                    duration_sec=d1,
+                    narration=seg1_narration,
+                    visual_description=v1_desc,
+                    on_screen_text=seg1_text
+                ),
+                SegmentApprovalItem(
+                    segment_index=2,
+                    duration_sec=d2,
+                    narration=seg2_narration,
+                    visual_description=v2_desc,
+                    on_screen_text=seg2_text
+                ),
+                SegmentApprovalItem(
+                    segment_index=3,
+                    duration_sec=d3,
+                    narration=seg3_narration,
+                    visual_description=v3_desc,
+                    on_screen_text=seg3_text
+                ),
+            ]
+            master_script = f"{seg1_narration} {seg2_narration} {seg3_narration}"
 
         return {
             "master_script": master_script,
