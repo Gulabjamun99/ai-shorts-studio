@@ -87,7 +87,7 @@ export default function App() {
           }
 
           if (!finalProject.assembly) finalProject.assembly = {};
-          const fallbackVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+          const fallbackVideo = 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm';
           const guaranteedUrl = res.final_video_url || res.video_url || finalProject.assembly.final_video_url || fallbackVideo;
           finalProject.assembly.final_video_url = guaranteedUrl;
           finalProject.assembly.status = 'READY';
@@ -126,7 +126,8 @@ export default function App() {
         voice_tone: formData.voice_tone,
         cta: formData.cta,
         apiKey: formData.apiKey,
-        provider: formData.provider
+        provider: formData.provider,
+        target_duration: formData.target_duration
       });
 
       // Upload any assets attached

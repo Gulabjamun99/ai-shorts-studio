@@ -48,12 +48,12 @@ export default function ScriptApprovalModal({
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              Review and customize your 20-23 second script before generating video segments.
+              Review and customize your ~{scriptData.estimated_duration || 48}s script before generating video segments.
             </p>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 text-xs text-white">
             <Clock className="w-3.5 h-3.5 text-blue-400" />
-            <span>Est. ~{scriptData.estimated_duration}s</span>
+            <span>Est. ~{scriptData.estimated_duration || 48}s</span>
           </div>
         </div>
 
@@ -90,10 +90,10 @@ export default function ScriptApprovalModal({
             )}
           </div>
 
-          {/* 3 Segments Breakdown */}
+          {/* Segments Breakdown */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              3 Continuous Generation Segments
+              {segments.length} Continuous Generation Segments (Google Vids Style)
             </h4>
 
             {segments.map((seg, idx) => (
@@ -104,7 +104,13 @@ export default function ScriptApprovalModal({
                       {seg.segment_index}
                     </span>
                     <span className="font-semibold text-white text-xs">
-                      {idx === 0 ? 'Hook / Problem' : idx === 1 ? 'Action / Solution' : 'Result & CTA'}
+                      {idx === 0
+                        ? 'Hook & Problem'
+                        : idx === 1
+                        ? 'Action & Demonstration'
+                        : idx === 2
+                        ? (segments.length >= 4 ? 'Results & Smart Tip' : 'Result & Call to Action')
+                        : 'Payoff & Call to Action'}
                     </span>
                   </div>
                   <span className="text-[11px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded">

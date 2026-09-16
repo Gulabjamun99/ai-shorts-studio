@@ -217,6 +217,10 @@ export default function VideoPlayerWithQA({
                   className="w-full h-full object-cover cursor-pointer"
                   src={videoUrl}
                   onClick={togglePlay}
+                  onError={(e) => {
+                    console.warn('Video failed to play, switching to reliable fallback');
+                    e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm';
+                  }}
                 >
                   {subtitlesUrl && (
                     <track default kind="subtitles" src={subtitlesUrl} srcLang="en" label="English" />

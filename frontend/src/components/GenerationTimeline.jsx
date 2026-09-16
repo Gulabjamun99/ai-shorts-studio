@@ -2,12 +2,13 @@ import React from 'react';
 import { Loader2, CheckCircle2, Video, Music, Layers, ShieldCheck, Film } from 'lucide-react';
 
 const PIPELINE_STEPS = [
-  { key: 'GENERATING_REFERENCE', label: 'Reference Assets', icon: Film, desc: 'Locking character & product continuity' },
-  { key: 'GENERATING_SEGMENT_1', label: 'Scene 1', icon: Video, desc: 'Generating hook & problem (0-8s)' },
-  { key: 'GENERATING_SEGMENT_2', label: 'Scene 2', icon: Video, desc: 'Continuing action & demo with frame anchoring' },
-  { key: 'GENERATING_SEGMENT_3', label: 'Scene 3', icon: Video, desc: 'Continuing resolution & CTA (16-23s)' },
-  { key: 'VOICE_GENERATING', label: 'Neural Audio', icon: Music, desc: 'Master narration & word-aligned subtitles' },
-  { key: 'ASSEMBLING', label: 'FFmpeg Assembly', icon: Layers, desc: 'Concatenation, safe margins & logo overlay' },
+  { key: 'GENERATING_REFERENCE', label: 'Reference & Themes', icon: Film, desc: 'Locking visual continuity and scene themes' },
+  { key: 'GENERATING_SEGMENT_1', label: 'Scene 1: Hook', icon: Video, desc: 'Generating hook & problem statement' },
+  { key: 'GENERATING_SEGMENT_2', label: 'Scene 2: Demonstration', icon: Video, desc: 'Generating smooth technique & demonstration' },
+  { key: 'GENERATING_SEGMENT_3', label: 'Scene 3: Execution & Tip', icon: Video, desc: 'Generating results, execution & smart tip' },
+  { key: 'GENERATING_SEGMENT_4', label: 'Scene 4: Payoff & CTA', icon: Video, desc: 'Delivering final payoff and Call to Action' },
+  { key: 'VOICE_GENERATING', label: 'Neural Audio & Voiceover', icon: Music, desc: 'Master narration & synchronized speech synthesis' },
+  { key: 'ASSEMBLING', label: 'Vids Assembly & Motion', icon: Layers, desc: 'Concatenating 9:16 vertical stream with Ken Burns motion' },
   { key: 'QA', label: '12-Point QA Gate', icon: ShieldCheck, desc: 'Auditing continuity, audio sync, & compliance' }
 ];
 
@@ -34,7 +35,7 @@ export default function GenerationTimeline({ currentStatus, progress = 0, errorM
             AI Video Generation Pipeline
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            Generating one seamless 20-23s video via 3 continuous segments...
+            Generating continuous Google Vids-style 9:16 vertical short...
           </p>
         </div>
         <span className="text-xl font-extrabold font-mono text-blue-400 bg-blue-950/50 px-3 py-1 rounded-xl border border-blue-800/40">

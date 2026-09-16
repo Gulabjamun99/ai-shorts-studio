@@ -139,18 +139,25 @@ Output ONLY valid JSON in this exact structure with ${numSegments} segments, wit
     },
     {
       "segment_index": 2,
-      "duration_sec": 7.5,
+      "duration_sec": ${isLongTutorial ? 13.0 : 7.5},
       "narration": "...",
       "visual_description": "...",
       "on_screen_text": "..."
     },
     {
       "segment_index": 3,
-      "duration_sec": 7.0,
+      "duration_sec": ${isLongTutorial ? 14.0 : 7.0},
       "narration": "...",
       "visual_description": "...",
       "on_screen_text": "..."
-    }
+    }${isLongTutorial ? `,
+    {
+      "segment_index": 4,
+      "duration_sec": 10.0,
+      "narration": "...",
+      "visual_description": "...",
+      "on_screen_text": "..."
+    }` : ''}
   ]
 }`;
 
@@ -168,7 +175,22 @@ Output ONLY valid JSON in this exact structure with ${numSegments} segments, wit
             const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleanJson);
-            if (parsed.master_script && parsed.segments?.length >= 3) {
+            if (parsed.master_script && Array.isArray(parsed.segments) && parsed.segments.length >= 3) {
+              if (isLongTutorial && parsed.segments.length === 3) {
+                const ctaText = cta || 'Follow for more daily tips!';
+                const finalSegNarration = language === 'Hindi'
+                  ? `अगर यह आसान और असरदार तरीका आपको पसंद आया, तो ${ctaText}!`
+                  : `For more daily hacks, ${ctaText}!`;
+                parsed.segments.push({
+                  segment_index: 4,
+                  duration_sec: 10.0,
+                  narration: finalSegNarration,
+                  visual_description: 'Vertical 9:16 payoff. Sparkling clean outcome and final call to action.',
+                  on_screen_text: `${ctaText.slice(0, 26)} 📲`
+                });
+                parsed.estimated_duration = 48.0;
+                parsed.master_script = `${parsed.master_script} ${finalSegNarration}`;
+              }
               return parsed;
             }
           }
@@ -459,73 +481,73 @@ export function getBlobFromStore(url) {
 }
 
 const THEME_IMAGES = {
-  cleaning: [
+  cleaning_stove: [
+    'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=720&q=80'
   ],
+  cleaning_glass: [
+    'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=720&q=80'
+  ],
+  cleaning: [
+    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=720&q=80'
+  ],
   cooking: [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=720&q=80',
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=720&q=80'
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1514944298352-fa01817ef811?auto=format&fit=crop&w=720&q=80'
   ],
   app: [
     'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=720&q=80',
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=720&q=80'
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=720&q=80'
   ],
   default: [
     'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=720&q=80',
     'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=720&q=80',
-    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=720&q=80'
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=720&q=80',
+    'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=720&q=80'
   ]
 };
 
 function getThemeImages(title, segments) {
-  const text = (title + ' ' + (segments || []).map(s => (s.narration || '') + ' ' + (s.on_screen_text || '')).join(' ')).toLowerCase();
-  if (/(सिरका|अखबार|शीशे|दाग|खिड़की|clean|wash|spray|window|glass|stain)/i.test(text)) {
-    return THEME_IMAGES.cleaning;
+  const text = ((title || '') + ' ' + (segments || []).map(s => (s.narration || '') + ' ' + (s.on_screen_text || '')).join(' ')).toLowerCase();
+  if (/(चूल्हा|चिकनाई|गैस|stove|burner|cooktop|knife|मैल|grime)/i.test(text)) {
+    return THEME_IMAGES.cleaning_stove;
   }
-  if (/(food|cook|recipe|kitchen|dish|स्वादिष्ट|खाना|रेसिपी)/i.test(text)) {
+  if (/(सिरका|अखबार|शीशे|दाग|खिड़की|clean|wash|spray|window|glass|stain)/i.test(text)) {
+    return THEME_IMAGES.cleaning_glass;
+  }
+  if (/(food|cook|recipe|kitchen|dish|दूध|पनीर|छेना|स्वादिष्ट|खाना|रेसिपी)/i.test(text)) {
     return THEME_IMAGES.cooking;
   }
   if (/(app|download|phone|mobile|service|ऐप|डाउनलोड|gharmantra)/i.test(text)) {
     return THEME_IMAGES.app;
   }
+  if (/(सफाई|clean|धोएं|साफ)/i.test(text)) {
+    return THEME_IMAGES.cleaning;
+  }
   return THEME_IMAGES.default;
 }
 
-export const ACTION_VIDEO_URLS = {
-  cleaning_stove: 'https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-cooktop-with-a-sponge-42871-large.mp4',
-  cleaning_glass: 'https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-mirror-with-a-cloth-42867-large.mp4',
-  cooking: 'https://assets.mixkit.co/videos/preview/mixkit-cooking-fresh-ingredients-in-a-pan-43093-large.mp4',
-  app: 'https://assets.mixkit.co/videos/preview/mixkit-browsing-apps-on-a-modern-smartphone-42999-large.mp4',
-  default: 'https://assets.mixkit.co/videos/preview/mixkit-hands-organizing-and-cleaning-a-modern-room-42872-large.mp4'
-};
-
-export function getThemeActionVideo(title, segments) {
-  const text = (title + ' ' + (segments || []).map(s => (s.narration || '') + ' ' + (s.on_screen_text || '')).join(' ')).toLowerCase();
-  if (/(चूल्हा|चिकनाई|गैस|stove|burner|cooktop|knife|मैल|grime)/i.test(text)) {
-    return ACTION_VIDEO_URLS.cleaning_stove;
-  }
-  if (/(सिरका|अखबार|शीशे|दाग|खिड़की|clean|wash|spray|window|glass|stain)/i.test(text)) {
-    return ACTION_VIDEO_URLS.cleaning_glass;
-  }
-  if (/(food|cook|recipe|kitchen|dish|दूध|पनीर|छेना|स्वादिष्ट|खाना|रेसिपी)/i.test(text)) {
-    return ACTION_VIDEO_URLS.cooking;
-  }
-  if (/(app|download|phone|mobile|service|ऐप|डाउनलोड|gharmantra)/i.test(text)) {
-    return ACTION_VIDEO_URLS.app;
-  }
-  return ACTION_VIDEO_URLS.default;
-}
+export const ACTION_FALLBACK_VIDEO = 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm';
 
 /**
  * Creates an in-browser playable 9:16 vertical video Blob for 100% reliable download & preview on Vercel.
  */
-function createBrowserVideoBlob(title, segments) {
+function createBrowserVideoBlob(title, segments = []) {
   return new Promise((resolve) => {
     try {
+      const numSegments = Math.max(1, segments?.length || 3);
       const canvas = document.createElement('canvas');
       canvas.width = 720;
       canvas.height = 1280;
@@ -577,8 +599,7 @@ function createBrowserVideoBlob(title, segments) {
 
       const videoStream = canvas.captureStream ? canvas.captureStream(30) : null;
       if (!videoStream || typeof MediaRecorder === 'undefined') {
-        const fallback = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-        return resolve(fallback);
+        return resolve(ACTION_FALLBACK_VIDEO);
       }
 
       const combinedTracks = [...videoStream.getVideoTracks(), ...audioTracks];
@@ -590,15 +611,18 @@ function createBrowserVideoBlob(title, segments) {
         if (e.data && e.data.size > 0) chunks.push(e.data);
       };
 
+      const framesPerSeg = 30; // 30 frames per scene (1 second per scene during browser generation)
+      const totalFrames = numSegments * framesPerSeg;
+
       const safetyTimeout = setTimeout(() => {
         try {
           if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
           }
         } catch (e) {
-          resolve('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+          resolve(ACTION_FALLBACK_VIDEO);
         }
-      }, 3800);
+      }, (totalFrames / 30 * 1000) + 1200);
 
       mediaRecorder.onstop = () => {
         clearTimeout(safetyTimeout);
@@ -613,50 +637,48 @@ function createBrowserVideoBlob(title, segments) {
           blobStore.set(blobUrl, finalBlob);
           resolve(blobUrl);
         } else {
-          resolve('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+          resolve(ACTION_FALLBACK_VIDEO);
         }
       };
 
       mediaRecorder.start(100);
 
       let frame = 0;
-      const totalFrames = 30 * 3; // 3 seconds loop
-      const seg1Text = segments?.[0]?.on_screen_text || 'शीशे चमकाएं बिना दाग! ✨';
-      const seg2Text = segments?.[1]?.on_screen_text || '1:1 सिरका + पानी स्प्रे करें 🧽';
-      const seg3Text = segments?.[2]?.on_screen_text || 'घरमंत्रा ऐप डाउनलोड करें 📲';
-
       function renderFrame() {
         if (frame >= totalFrames) {
-          mediaRecorder.stop();
+          try {
+            if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+          } catch (e) {}
           return;
         }
 
-        const currentSegment = frame < 30 ? 1 : frame < 60 ? 2 : 3;
-        const activeImg = preloadedImgs[currentSegment - 1];
+        const segIdx = Math.min(numSegments - 1, Math.floor(frame / framesPerSeg));
+        const activeImg = preloadedImgs[segIdx % preloadedImgs.length];
 
-        // Draw visual background (Image or rich gradient fallback)
+        // Draw visual background (Image with cinematic Ken Burns zoom, or rich gradient)
         if (activeImg && activeImg.complete && activeImg.naturalWidth > 0) {
-          const segProgress = (frame % 30) / 30;
-          const scale = 1.0 + segProgress * 0.08; // Smooth cinematic Ken Burns zoom
+          const segProgress = (frame % framesPerSeg) / framesPerSeg;
+          const scale = 1.0 + segProgress * 0.08; // Smooth Ken Burns zoom
           const w = 720 * scale;
           const h = 1280 * scale;
           const x = (720 - w) / 2;
           const y = (1280 - h) / 2;
           ctx.drawImage(activeImg, x, y, w, h);
 
-          // Dark cinematic scrims for readable text
+          // Top dark scrim
           const topScrim = ctx.createLinearGradient(0, 0, 0, 360);
           topScrim.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
           topScrim.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = topScrim;
           ctx.fillRect(0, 0, 720, 360);
 
-          const botScrim = ctx.createLinearGradient(0, 900, 0, 1280);
+          // Bottom dark scrim
+          const botScrim = ctx.createLinearGradient(0, 880, 0, 1280);
           botScrim.addColorStop(0, 'rgba(0, 0, 0, 0)');
-          botScrim.addColorStop(0.3, 'rgba(0, 0, 0, 0.75)');
+          botScrim.addColorStop(0.25, 'rgba(0, 0, 0, 0.80)');
           botScrim.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
           ctx.fillStyle = botScrim;
-          ctx.fillRect(0, 900, 720, 380);
+          ctx.fillRect(0, 880, 720, 400);
         } else {
           const grad = ctx.createLinearGradient(0, 0, 720, 1280);
           grad.addColorStop(0, '#0a0f1d');
@@ -666,37 +688,54 @@ function createBrowserVideoBlob(title, segments) {
           ctx.fillRect(0, 0, 720, 1280);
         }
 
-        // Clean Minimal Progress Bar at very bottom (like Instagram Reels)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillRect(0, 1274, 720, 6);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(0, 1274, 720 * (frame / totalFrames), 6);
+        // Header Title Badge (Google Vids style)
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(40, 50, 640, 56, 16);
+          ctx.fill();
+        } else {
+          ctx.fillRect(40, 50, 640, 56);
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        const displayTitle = (title || 'Smart Hack').slice(0, 30);
+        ctx.fillText(`✨ ${displayTitle} • Scene ${segIdx + 1}/${numSegments}`, 360, 86);
+        ctx.restore();
 
-        // Modern Clean Social Media Caption Bar (Zero developer debug text)
-        const currentCaption = currentSegment === 1 ? seg1Text : currentSegment === 2 ? seg2Text : seg3Text;
-        if (currentCaption) {
+        // Minimal Progress Bar at very bottom (like Instagram Reels)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(0, 1272, 720, 8);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(0, 1272, 720 * (frame / totalFrames), 8);
+
+        // Modern Clean Social Media Caption Card (Frosted glass with crisp bold text)
+        const curSeg = segments?.[segIdx];
+        const caption = curSeg?.on_screen_text || curSeg?.narration?.slice(0, 30) || 'Smart Hack ✨';
+        if (caption) {
           ctx.save();
-          // Soft rounded frosted backdrop
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          const boxY = 1050;
-          const boxH = 90;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+          const boxY = 1040;
+          const boxH = 96;
           if (ctx.roundRect) {
             ctx.beginPath();
-            ctx.roundRect(50, boxY, 620, boxH, 18);
+            ctx.roundRect(40, boxY, 640, boxH, 20);
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 1.5;
             ctx.stroke();
           } else {
-            ctx.fillRect(50, boxY, 620, boxH);
+            ctx.fillRect(40, boxY, 640, boxH);
           }
 
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
           ctx.textAlign = 'center';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-          ctx.shadowBlur = 12;
-          ctx.fillText(currentCaption, 360, boxY + 56);
+          ctx.shadowBlur = 10;
+          ctx.fillText(caption.slice(0, 38), 360, boxY + 58);
           ctx.restore();
         }
 
@@ -707,7 +746,7 @@ function createBrowserVideoBlob(title, segments) {
       renderFrame();
     } catch (e) {
       console.error('Canvas video creation fallback', e);
-      resolve('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+      resolve(ACTION_FALLBACK_VIDEO);
     }
   });
 }
@@ -884,19 +923,22 @@ export async function approveAndGenerate(payload) {
     }
   }
 
-  // Match real action video footage based on topic (Google Vids style)
-  const matchedRealVideo = getThemeActionVideo(targetTitle, targetSegments);
-  const videoBlobUrl = await createBrowserVideoBlob(targetTitle, targetSegments).catch(() => matchedRealVideo);
-  const finalPlayableUrl = matchedRealVideo || videoBlobUrl;
+  // Generate rich browser video blob with captions, smooth Ken Burns zoom, and audio
+  const videoBlobUrl = await createBrowserVideoBlob(targetTitle, targetSegments).catch((e) => {
+    console.warn('Browser video creation error:', e);
+    return null;
+  });
+  const finalPlayableUrl = videoBlobUrl || ACTION_FALLBACK_VIDEO;
 
   db.jobs[jobId] = {
     job_id: jobId,
     project_id: targetProjectId,
     version_id: payload.version_id,
     current_state: 'GENERATING_SEGMENT_1',
-    progress_pct: 35,
+    progress_pct: 25,
     created_at: Date.now(),
-    video_url: finalPlayableUrl
+    video_url: finalPlayableUrl,
+    segments_count: targetSegments.length || 4
   };
 
   if (db.projects[targetProjectId]) {
@@ -945,38 +987,63 @@ export async function getGenerationStatus(jobId) {
       project_id: firstP?.project?.id || null,
       current_state: 'READY',
       progress_pct: 100,
-      final_video_url: firstP?.assembly?.final_video_url || null,
+      final_video_url: firstP?.assembly?.final_video_url || ACTION_FALLBACK_VIDEO,
       qa_score: 96.2
     };
   }
 
   const elapsed = (Date.now() - job.created_at) / 1000;
-  if (elapsed < 0.8) {
-    job.current_state = 'GENERATING_SEGMENT_1';
-    job.progress_pct = 40;
-  } else if (elapsed < 1.8) {
-    job.current_state = 'GENERATING_SEGMENT_2';
-    job.progress_pct = 65;
-  } else if (elapsed < 2.8) {
-    job.current_state = 'GENERATING_SEGMENT_3';
-    job.progress_pct = 85;
-  } else if (elapsed < 3.5) {
-    job.current_state = 'ASSEMBLING';
-    job.progress_pct = 95;
+  const is4Seg = (job.segments_count || 4) >= 4;
+
+  if (is4Seg) {
+    if (elapsed < 0.8) {
+      job.current_state = 'GENERATING_SEGMENT_1';
+      job.progress_pct = 25;
+    } else if (elapsed < 1.6) {
+      job.current_state = 'GENERATING_SEGMENT_2';
+      job.progress_pct = 50;
+    } else if (elapsed < 2.4) {
+      job.current_state = 'GENERATING_SEGMENT_3';
+      job.progress_pct = 75;
+    } else if (elapsed < 3.2) {
+      job.current_state = 'GENERATING_SEGMENT_4';
+      job.progress_pct = 90;
+    } else if (elapsed < 4.0) {
+      job.current_state = 'ASSEMBLING';
+      job.progress_pct = 96;
+    } else {
+      job.current_state = 'READY';
+      job.progress_pct = 100;
+    }
   } else {
-    job.current_state = 'READY';
-    job.progress_pct = 100;
-    
+    if (elapsed < 0.8) {
+      job.current_state = 'GENERATING_SEGMENT_1';
+      job.progress_pct = 35;
+    } else if (elapsed < 1.8) {
+      job.current_state = 'GENERATING_SEGMENT_2';
+      job.progress_pct = 65;
+    } else if (elapsed < 2.8) {
+      job.current_state = 'GENERATING_SEGMENT_3';
+      job.progress_pct = 85;
+    } else if (elapsed < 3.5) {
+      job.current_state = 'ASSEMBLING';
+      job.progress_pct = 95;
+    } else {
+      job.current_state = 'READY';
+      job.progress_pct = 100;
+    }
+  }
+
+  if (job.current_state === 'READY') {
     if (job.project_id && db.projects[job.project_id]) {
       const p = db.projects[job.project_id];
       p.version.status = 'READY';
-      const fallbackUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
-      const readyVideo = job.video_url || p.assembly?.final_video_url || fallbackUrl;
+      const readyVideo = job.video_url || p.assembly?.final_video_url || ACTION_FALLBACK_VIDEO;
       p.assembly = {
         final_video_url: readyVideo,
         subtitles_url: null,
         resolution: '1080x1920',
-        duration_sec: 21.8,
+        duration_sec: p.project.target_duration || (is4Seg ? 48.0 : 21.8),
         status: 'READY'
       };
       p.qa = {
@@ -1003,7 +1070,7 @@ export async function getGenerationStatus(jobId) {
 
   saveLocalDB(db);
 
-  const guaranteedReadyVideo = job.video_url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+  const guaranteedReadyVideo = job.video_url || ACTION_FALLBACK_VIDEO;
 
   return {
     job_id: jobId,

@@ -14,29 +14,19 @@ from backend.app.providers.base import BaseVideoProvider, VideoGenerationResult
 # High-quality direct vertical 9:16 MP4 action footage sources
 CURATED_ACTION_VIDEOS: Dict[str, List[str]] = {
     "cleaning_stove": [
-        "https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-cooktop-with-a-sponge-42871-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-countertop-with-a-rag-42868-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-kitchen-with-a-gas-stove-and-stainless-steel-exhaust-hood-42874-large.mp4"
+        "https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm"
     ],
     "cleaning_glass": [
-        "https://assets.mixkit.co/videos/preview/mixkit-cleaning-a-mirror-with-a-cloth-42867-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-woman-cleaning-a-window-with-a-spray-and-rag-42866-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-sparkling-sunlight-through-clean-glass-window-42870-large.mp4"
+        "https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm"
     ],
     "cooking": [
-        "https://assets.mixkit.co/videos/preview/mixkit-cooking-fresh-ingredients-in-a-pan-43093-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-boiling-milk-and-preparing-fresh-food-43094-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-freshly-prepared-delicious-dish-presentation-43095-large.mp4"
+        "https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm"
     ],
     "app": [
-        "https://assets.mixkit.co/videos/preview/mixkit-hands-holding-a-smartphone-with-a-green-screen-42998-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-browsing-apps-on-a-modern-smartphone-42999-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-satisfied-user-holding-smartphone-in-bright-room-43000-large.mp4"
+        "https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm"
     ],
     "default": [
-        "https://assets.mixkit.co/videos/preview/mixkit-hands-organizing-and-cleaning-a-modern-room-42872-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-demonstrating-household-technique-carefully-42873-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-sparkling-clean-organized-living-space-42875-large.mp4"
+        "https://upload.wikimedia.org/wikipedia/commons/e/e3/Sweeping.webm"
     ]
 }
 
